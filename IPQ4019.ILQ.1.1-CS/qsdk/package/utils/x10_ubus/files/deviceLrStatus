@@ -1,0 +1,11 @@
+#!/bin/sh
+
+. "/usr/share/libubox/jshn.sh"
+
+status=`cat /tmp/learnModeStatus`
+echo -e -n "Content-Type:application/json\r\n\r\n"
+
+json_init
+json_add_string 'learning_st' $status
+json_dump
+

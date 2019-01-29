@@ -1,0 +1,189 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>ASRock X10 Router</title>
+<script type="text/javascript" src="/includes/jquery.min.js"></script>
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+if(typeof console === "undefined") { var console = { log: function (logMsg) { } }; }
+
+function MM_preloadImages() { //v3.0
+  var d=document; if(d.images){ if(!d.MM_p) d.MM_p=new Array();
+    var i,j=d.MM_p.length,a=MM_preloadImages.arguments; for(i=0; i<a.length; i++)
+    if (a[i].indexOf("#")!=0){ d.MM_p[j]=new Image; d.MM_p[j++].src=a[i];}}
+}
+function createCookie(name, value, seconds) {
+    var expires = "";
+    if (seconds) {
+        var date = new Date();
+        date.setTime(date.getTime() + (seconds * 1000 + 15));
+        expires = "; expires=" + date.toGMTString();
+    }
+    document.cookie = name + "=" + value + expires + "; path=/";
+}
+function readCookie(name) {
+    var nameEQ = name + "=";
+    var ca = document.cookie.split(';');
+    for (var i = 0; i < ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+}
+function hasCookie(name) {
+    return (document.cookie || "").indexOf(name+"=") != -1;
+}
+function eraseCookie(name) {
+  var ie = navigator.userAgent.match(/MSIE\s([\d.]+)/),
+      ie11 = navigator.userAgent.match(/Trident\/7.0/) && navigator.userAgent.match(/rv:11/),
+      ieEDGE = navigator.userAgent.match(/Edge/g),
+      ieVer=(ie ? ie[1] : (ie11 ? 11 : (ieEDGE ? 12 : -1)));
+  if (ie){
+       document.execCommand("ClearAuthenticationCache");
+   return;
+  }
+    document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+}
+function createXMLObject()
+{
+  if(window.XMLHttpRequest)
+    xmlhttp=new XMLHttpRequest();
+  else if (window.ActiveXObject)
+    xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+  return xmlhttp;
+}
+function logoutfunction(msgtmp)
+{
+  var page='.force_logout';
+  var agt=navigator.userAgent.toLowerCase();
+  if(agt.match(/msie ([\d.]+)/) || agt.match(/rv:([\d.]+)\) like gecko/))
+  {
+    document.execCommand("ClearAuthenticationCache",false);    
+  }
+  else
+  {
+    var xmlhttp=createXMLObject();      
+    xmlhttp.open("GET",page,true,"logout","logout");
+    // xmlhttp.setRequestHeader("Authorization","Basic YXNkc2E6");
+    xmlhttp.send();
+//  if(agt.indexOf("chrome")==-1)
+//  xmlhttp.abort();      
+  }
+  document.getElementById("title").innerHTML=msgtmp;    
+}
+function login_again() {
+  window.open("http://"+window.location.host, "_self");
+//  window.top.location.assign("/")
+}
+function showmessage(){  
+  var tmpnow=window.location.toString();
+  var urlsearch=tmpnow.search("success");
+  var p=tmpnow.search(/=/);
+  var addrnow=tmpnow.substring(p+1);
+  var messages;
+
+  if(addrnow=="success")
+  {
+    messages=LogoutWarn4;
+
+    logoutfunction(messages);
+  }
+  else if(addrnow=="autologout")
+  { 
+     messages=LogoutWarn3;
+//    messages="The connection has been idle for 5 minutes. If you need to set, please log in again.";
+    logoutfunction(messages);
+  }
+  else if (addrnow == "aga") {
+    messages=LogoutWarn5;
+    logoutfunction(messages);
+ }
+  else
+  {
+    messages=LogoutWarn6;
+    logoutfunction(messages);
+    document.getElementById("message").innerHTML==LogoutWarn6;;
+  } 
+  eraseCookie("x10_session");
+  eraseCookie("user");
+  console.log(document.cookie);
+}
+</script>
+</head>
+<body onload="showmessage()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <tr>
+          <td width="960" height="113" valign="top"><table width="100%" border="0" cellspacing="0" cellpadding="0">
+            <tr>
+              <td><img src="images/UI-new_01.png" width="960" height="7" /></td>
+            </tr>
+            <tr>
+              <td><table width="100%" border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td background="images/UI-new_02-new.png" height="42"><table width="100%" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td width="13%">&nbsp;</td>
+                      <td width="87%" class="style12">X10</td>
+                      </tr>
+                  </table></td>
+                  </tr>
+              </table></td>
+            </tr>
+            <tr>
+              <td><img src="images/UI-new_09.png" width="960" height="64" /></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td align="center" valign="top" background="images/UI-new_10.png"><table width="95%" border="0" cellspacing="2" cellpadding="2">
+            <tr>
+              <td width="97%" colspan="2" align="center"><span id="title" style="font-size:18px;color: #FFF"></span></td>
+            </tr>
+            <tr>
+              <td colspan="2" align="left" class="style8">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="97%" colspan="2" align="center"><span id="message" style="font-size:18px;color: #FFF"></span></td>
+            </tr>
+            <tr>
+              <td colspan="2" align="center">&nbsp;</td>
+            </tr>
+            <tr>
+              <td colspan="2" align="center">&nbsp;</td>
+            </tr>
+            <tr>
+              <td colspan="2" align="center">&nbsp;</td>
+            </tr>
+            <tr>
+              <td colspan="2" align="center">&nbsp;</td>
+            </tr>
+            <tr>
+              <td colspan="2" align="center"><table width="119" height="39" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td class="button1" align="center" valign="middle" background="images/botton02.png" onclick="login_again()"><a>Login</a></td>
+                  </tr>
+                </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <div class="style9">© 2002-2017 ASRock Inc. All rights reserved. | <script>document.write(Notice);</script>
+  </div>
+</div>
+<!-- End Save for Web Slices -->
+</body>
+</html>

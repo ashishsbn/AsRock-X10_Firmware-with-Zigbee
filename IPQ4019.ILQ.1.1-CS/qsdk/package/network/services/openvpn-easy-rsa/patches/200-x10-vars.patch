@@ -1,0 +1,40 @@
+--- a/easy-rsa/2.0/vars
++++ b/easy-rsa/2.0/vars
+@@ -50,7 +50,7 @@
+ # down TLS negotiation performance
+ # as well as the one-time DH parms
+ # generation process.
+-export KEY_SIZE=2048
++export KEY_SIZE=1024
+ 
+ # In how many days should the root CA key expire?
+ export CA_EXPIRE=3650
+@@ -61,15 +61,15 @@
+ # These are the default values for fields
+ # which will be placed in the certificate.
+ # Don't leave any of these fields blank.
+-export KEY_COUNTRY="US"
+-export KEY_PROVINCE="CA"
+-export KEY_CITY="SanFrancisco"
+-export KEY_ORG="Fort-Funston"
+-export KEY_EMAIL="me@myhost.mydomain"
+-export KEY_OU="MyOrganizationalUnit"
++export KEY_COUNTRY="TW"
++export KEY_PROVINCE="TW"
++export KEY_CITY="Taipei"
++export KEY_ORG="ASRock Incorporation"
++export KEY_EMAIL="Asrock_tsd@asrock.com.tw"
++export KEY_OU="ASRock X10"
+ 
+ # X509 Subject Field
+-export KEY_NAME="EasyRSA"
++export KEY_NAME="OpenVPN"
+ 
+ # PKCS11 Smart Card
+ # export PKCS11_MODULE_PATH="/usr/lib/changeme.so"
+@@ -77,4 +77,4 @@
+ 
+ # If you'd like to sign all keys with the same Common Name, uncomment the KEY_CN export below
+ # You will also need to make sure your OpenVPN server config has the duplicate-cn option set
+-# export KEY_CN="CommonName"
++export KEY_CN="X10 IoT Router"

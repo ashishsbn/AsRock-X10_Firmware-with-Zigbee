@@ -1,0 +1,15 @@
+--- a/json_object.h	2013-04-01 10:01:09.000000000 +0800
++++ b/json_object.h	2016-09-17 19:23:24.424305646 +0800
+@@ -48,10 +48,10 @@
+ #define JSON_C_TO_STRING_NOZERO     (1<<2)
+ 
+ #undef FALSE
+-#define FALSE ((json_bool)0)
++#define FALSE (0)
+ 
+ #undef TRUE
+-#define TRUE ((json_bool)1)
++#define TRUE (1)
+ 
+ extern const char *json_number_chars;
+ extern const char *json_hex_chars;

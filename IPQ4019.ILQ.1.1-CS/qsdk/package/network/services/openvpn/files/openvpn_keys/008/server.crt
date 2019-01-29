@@ -1,0 +1,77 @@
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number: 1 (0x1)
+    Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C=TW, ST=TW, L=Taipei, O=ASRock Incorporation, OU=ASRock X10, CN=X10 IoT Router/name=OpenVPN/emailAddress=Asrock_tsd@asrock.com.tw
+        Validity
+            Not Before: Jun 20 07:00:55 2016 GMT
+            Not After : Jun 18 07:00:55 2026 GMT
+        Subject: C=TW, ST=TW, L=Taipei, O=ASRock Incorporation, OU=ASRock X10, CN=server/name=OpenVPN/emailAddress=Asrock_tsd@asrock.com.tw
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (1024 bit)
+                Modulus:
+                    00:bb:2f:76:f0:38:18:b6:26:e8:1b:c4:54:56:1c:
+                    51:92:08:e5:6c:24:14:ac:41:e0:41:b1:a8:ea:0f:
+                    da:26:b4:d1:5a:d1:b7:01:fe:c7:66:76:ae:78:bc:
+                    ac:26:0b:c3:5e:fc:87:75:bc:59:5d:bd:a5:ca:05:
+                    c2:12:15:f9:f5:0e:b1:4e:03:4f:e1:b1:9a:27:72:
+                    53:78:00:3c:e3:67:97:4e:c8:07:42:4f:a6:68:e8:
+                    fd:08:8b:3a:04:92:a4:dc:ae:6c:3b:00:ce:18:bd:
+                    15:c8:57:7d:62:b0:c1:ea:14:40:1c:d3:a7:6c:8c:
+                    94:d3:c5:d9:d8:f9:f0:5b:09
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Basic Constraints: 
+                CA:FALSE
+            Netscape Cert Type: 
+                SSL Server
+            Netscape Comment: 
+                Easy-RSA Generated Server Certificate
+            X509v3 Subject Key Identifier: 
+                BA:0E:CE:5E:8C:DF:99:FB:A3:75:9B:89:DC:08:B8:FD:D9:FA:C3:53
+            X509v3 Authority Key Identifier: 
+                keyid:C1:A9:F4:EB:7A:01:3A:42:4E:0C:05:EA:3E:31:DA:31:54:7D:12:53
+                DirName:/C=TW/ST=TW/L=Taipei/O=ASRock Incorporation/OU=ASRock X10/CN=X10 IoT Router/name=OpenVPN/emailAddress=Asrock_tsd@asrock.com.tw
+                serial:EA:88:CB:F8:08:1F:DE:83
+
+            X509v3 Extended Key Usage: 
+                TLS Web Server Authentication
+            X509v3 Key Usage: 
+                Digital Signature, Key Encipherment
+    Signature Algorithm: sha256WithRSAEncryption
+         b6:15:f9:54:a6:d9:47:11:f0:03:b6:4f:89:19:57:1f:6c:98:
+         06:27:20:32:58:35:97:d7:4d:f3:f8:6a:b8:2e:07:82:d2:b3:
+         ca:32:cd:c1:43:16:a3:67:95:43:98:1c:e8:64:41:31:da:f5:
+         e3:6d:a7:0b:2d:a1:de:84:32:49:3e:48:33:96:a9:26:dc:15:
+         46:75:b5:01:d6:ce:28:54:49:42:c1:ae:ae:7e:2d:bf:e5:e4:
+         1f:8f:4d:61:06:19:ec:fe:9b:11:11:3d:36:0b:ca:f4:c4:b8:
+         0d:8b:d2:70:a0:d2:1e:cc:b9:8e:c3:db:1e:5d:d9:e6:bc:77:
+         9c:26
+-----BEGIN CERTIFICATE-----
+MIIEXDCCA8WgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBszELMAkGA1UEBhMCVFcx
+CzAJBgNVBAgTAlRXMQ8wDQYDVQQHEwZUYWlwZWkxHTAbBgNVBAoTFEFTUm9jayBJ
+bmNvcnBvcmF0aW9uMRMwEQYDVQQLEwpBU1JvY2sgWDEwMRcwFQYDVQQDEw5YMTAg
+SW9UIFJvdXRlcjEQMA4GA1UEKRMHT3BlblZQTjEnMCUGCSqGSIb3DQEJARYYQXNy
+b2NrX3RzZEBhc3JvY2suY29tLnR3MB4XDTE2MDYyMDA3MDA1NVoXDTI2MDYxODA3
+MDA1NVowgasxCzAJBgNVBAYTAlRXMQswCQYDVQQIEwJUVzEPMA0GA1UEBxMGVGFp
+cGVpMR0wGwYDVQQKExRBU1JvY2sgSW5jb3Jwb3JhdGlvbjETMBEGA1UECxMKQVNS
+b2NrIFgxMDEPMA0GA1UEAxMGc2VydmVyMRAwDgYDVQQpEwdPcGVuVlBOMScwJQYJ
+KoZIhvcNAQkBFhhBc3JvY2tfdHNkQGFzcm9jay5jb20udHcwgZ8wDQYJKoZIhvcN
+AQEBBQADgY0AMIGJAoGBALsvdvA4GLYm6BvEVFYcUZII5WwkFKxB4EGxqOoP2ia0
+0VrRtwH+x2Z2rni8rCYLw178h3W8WV29pcoFwhIV+fUOsU4DT+GxmidyU3gAPONn
+l07IB0JPpmjo/QiLOgSSpNyubDsAzhi9FchXfWKwweoUQBzTp2yMlNPF2dj58FsJ
+AgMBAAGjggGEMIIBgDAJBgNVHRMEAjAAMBEGCWCGSAGG+EIBAQQEAwIGQDA0Bglg
+hkgBhvhCAQ0EJxYlRWFzeS1SU0EgR2VuZXJhdGVkIFNlcnZlciBDZXJ0aWZpY2F0
+ZTAdBgNVHQ4EFgQUug7OXozfmfujdZuJ3Ai4/dn6w1MwgegGA1UdIwSB4DCB3YAU
+wan063oBOkJODAXqPjHaMVR9ElOhgbmkgbYwgbMxCzAJBgNVBAYTAlRXMQswCQYD
+VQQIEwJUVzEPMA0GA1UEBxMGVGFpcGVpMR0wGwYDVQQKExRBU1JvY2sgSW5jb3Jw
+b3JhdGlvbjETMBEGA1UECxMKQVNSb2NrIFgxMDEXMBUGA1UEAxMOWDEwIElvVCBS
+b3V0ZXIxEDAOBgNVBCkTB09wZW5WUE4xJzAlBgkqhkiG9w0BCQEWGEFzcm9ja190
+c2RAYXNyb2NrLmNvbS50d4IJAOqIy/gIH96DMBMGA1UdJQQMMAoGCCsGAQUFBwMB
+MAsGA1UdDwQEAwIFoDANBgkqhkiG9w0BAQsFAAOBgQC2FflUptlHEfADtk+JGVcf
+bJgGJyAyWDWX103z+Gq4LgeC0rPKMs3BQxajZ5VDmBzoZEEx2vXjbacLLaHehDJJ
+Pkgzlqkm3BVGdbUB1s4oVElCwa6ufi2/5eQfj01hBhns/psRET02C8r0xLgNi9Jw
+oNIezLmOw9seXdnmvHecJg==
+-----END CERTIFICATE-----

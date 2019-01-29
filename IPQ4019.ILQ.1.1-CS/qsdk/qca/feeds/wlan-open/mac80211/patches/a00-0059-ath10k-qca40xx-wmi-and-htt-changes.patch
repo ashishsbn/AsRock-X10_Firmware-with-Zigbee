@@ -1,0 +1,524 @@
+--- a/drivers/net/wireless/ath/ath10k/bmi.h
++++ b/drivers/net/wireless/ath/ath10k/bmi.h
+@@ -83,6 +83,7 @@ enum bmi_cmd_id {
+ #define BMI_NVRAM_SEG_NAME_SZ 16
+ 
+ #define BMI_PARAM_GET_EEPROM_BOARD_ID 0x10
++#define BMI_PARAM_GET_BID_FROM_FLASH  0x8000
+ 
+ #define ATH10K_BMI_BOARD_ID_FROM_OTP_MASK   0x7c00
+ #define ATH10K_BMI_BOARD_ID_FROM_OTP_LSB    10
+--- a/drivers/net/wireless/ath/ath10k/core.c
++++ b/drivers/net/wireless/ath/ath10k/core.c
+@@ -62,11 +62,13 @@ static const struct ath10k_hw_params ath
+ 	{
+ 		.id = QCA988X_HW_2_0_VERSION,
+ 		.dev_id = QCA988X_2_0_DEVICE_ID,
++		.type = QCA988X_HW_DEV_TYPE,
+ 		.name = "qca988x hw2.0",
+ 		.patch_load_addr = QCA988X_HW_2_0_PATCH_LOAD_ADDR,
+ 		.uart_pin = 7,
+ 		.has_shifted_cc_wraparound = true,
+ 		.otp_exe_param = 0,
++		.otp_get_chip_ver_param = BMI_PARAM_GET_EEPROM_BOARD_ID,
+ 		.channel_counters_freq_hz = 88000,
+ 		.max_probe_resp_desc_thres = 0,
+ 		.hw_4addr_pad = ATH10K_HW_4ADDR_PAD_AFTER,
+@@ -82,10 +84,12 @@ static const struct ath10k_hw_params ath
+ 	{
+ 		.id = QCA6174_HW_2_1_VERSION,
+ 		.dev_id = QCA6164_2_1_DEVICE_ID,
++		.type = QCA6174_HW_DEV_TYPE,
+ 		.name = "qca6164 hw2.1",
+ 		.patch_load_addr = QCA6174_HW_2_1_PATCH_LOAD_ADDR,
+ 		.uart_pin = 6,
+ 		.otp_exe_param = 0,
++		.otp_get_chip_ver_param = BMI_PARAM_GET_EEPROM_BOARD_ID,
+ 		.channel_counters_freq_hz = 88000,
+ 		.max_probe_resp_desc_thres = 0,
+ 		.fw = {
+@@ -100,10 +104,12 @@ static const struct ath10k_hw_params ath
+ 	{
+ 		.id = QCA6174_HW_2_1_VERSION,
+ 		.dev_id = QCA6174_2_1_DEVICE_ID,
++		.type = QCA6174_HW_DEV_TYPE,
+ 		.name = "qca6174 hw2.1",
+ 		.patch_load_addr = QCA6174_HW_2_1_PATCH_LOAD_ADDR,
+ 		.uart_pin = 6,
+ 		.otp_exe_param = 0,
++		.otp_get_chip_ver_param = BMI_PARAM_GET_EEPROM_BOARD_ID,
+ 		.channel_counters_freq_hz = 88000,
+ 		.max_probe_resp_desc_thres = 0,
+ 		.hw_4addr_pad = ATH10K_HW_4ADDR_PAD_AFTER,
+@@ -119,10 +125,12 @@ static const struct ath10k_hw_params ath
+ 	{
+ 		.id = QCA6174_HW_3_0_VERSION,
+ 		.dev_id = QCA6174_2_1_DEVICE_ID,
++		.type = QCA6174_HW_DEV_TYPE,
+ 		.name = "qca6174 hw3.0",
+ 		.patch_load_addr = QCA6174_HW_3_0_PATCH_LOAD_ADDR,
+ 		.uart_pin = 6,
+ 		.otp_exe_param = 0,
++		.otp_get_chip_ver_param = BMI_PARAM_GET_EEPROM_BOARD_ID,
+ 		.channel_counters_freq_hz = 88000,
+ 		.max_probe_resp_desc_thres = 0,
+ 		.hw_4addr_pad = ATH10K_HW_4ADDR_PAD_AFTER,
+@@ -138,10 +146,12 @@ static const struct ath10k_hw_params ath
+ 	{
+ 		.id = QCA6174_HW_3_2_VERSION,
+ 		.dev_id = QCA6174_2_1_DEVICE_ID,
++		.type = QCA6174_HW_DEV_TYPE,
+ 		.name = "qca6174 hw3.2",
+ 		.patch_load_addr = QCA6174_HW_3_0_PATCH_LOAD_ADDR,
+ 		.uart_pin = 6,
+ 		.otp_exe_param = 0,
++		.otp_get_chip_ver_param = BMI_PARAM_GET_EEPROM_BOARD_ID,
+ 		.channel_counters_freq_hz = 88000,
+ 		.max_probe_resp_desc_thres = 0,
+ 		.hw_4addr_pad = ATH10K_HW_4ADDR_PAD_AFTER,
+@@ -158,10 +168,12 @@ static const struct ath10k_hw_params ath
+ 	{
+ 		.id = QCA99X0_HW_2_0_DEV_VERSION,
+ 		.dev_id = QCA99X0_2_0_DEVICE_ID,
++		.type = QCA99X0_HW_DEV_TYPE,
+ 		.name = "qca99x0 hw2.0",
+ 		.patch_load_addr = QCA99X0_HW_2_0_PATCH_LOAD_ADDR,
+ 		.uart_pin = 7,
+ 		.otp_exe_param = 0x00000700,
++		.otp_get_chip_ver_param = BMI_PARAM_GET_EEPROM_BOARD_ID,
+ 		.continuous_frag_desc = true,
+ 		.channel_counters_freq_hz = 150000,
+ 		.max_probe_resp_desc_thres = 24,
+@@ -212,6 +224,28 @@ static const struct ath10k_hw_params ath
+ 			.board_ext_size = QCA9377_BOARD_EXT_DATA_SZ,
+ 		},
+ 	},
++	{
++		.id = QCA40XX_HW_1_0_DEV_VERSION,
++		.type = QCA40XX_HW_DEV_TYPE,
++		.name = "qca40xx hw1.0",
++		.patch_load_addr = QCA40XX_HW_1_0_PATCH_LOAD_ADDR,
++		.uart_pin = 7,
++		.otp_exe_param = 0x0010000,
++		.otp_get_chip_ver_param = BMI_PARAM_GET_BID_FROM_FLASH,
++		.continuous_frag_desc = true,
++		.channel_counters_freq_hz = 125000,
++		.max_probe_resp_desc_thres = 24,
++		.platform_type = WMI_HOST_PLATFORM_LOW_PERF,
++		.utf_codeswap_support = true,
++		.fw = {
++			.dir = QCA40XX_HW_1_0_FW_DIR,
++			.fw = QCA40XX_HW_1_0_FW_FILE,
++			.otp = QCA40XX_HW_1_0_OTP_FILE,
++			.board = QCA40XX_HW_1_0_BOARD_DATA_FILE,
++			.board_size = QCA40XX_BOARD_DATA_SZ,
++			.board_ext_size = QCA40XX_BOARD_EXT_DATA_SZ,
++		},
++	},
+ };
+ 
+ static const char *const ath10k_core_fw_feature_str[] = {
+@@ -628,10 +662,12 @@ out:
+ static int ath10k_core_get_board_id_from_otp(struct ath10k *ar)
+ {
+ 	u32 result, address;
++	u32 get_chip_ver_param;
+ 	u8 board_id, chip_id;
+ 	int ret;
+ 
+ 	address = ar->hw_params.patch_load_addr;
++	get_chip_ver_param = ar->hw_params.otp_get_chip_ver_param;
+ 
+ 	if (!ar->otp_data || !ar->otp_len) {
+ 		ath10k_warn(ar,
+@@ -650,8 +686,7 @@ static int ath10k_core_get_board_id_from
+ 		return ret;
+ 	}
+ 
+-	ret = ath10k_bmi_execute(ar, address, BMI_PARAM_GET_EEPROM_BOARD_ID,
+-				 &result);
++	ret = ath10k_bmi_execute(ar, address, get_chip_ver_param, &result);
+ 	if (ret) {
+ 		ath10k_err(ar, "could not execute otp for board id check: %d\n",
+ 			   ret);
+@@ -1452,6 +1487,7 @@ static int ath10k_init_hw_params(struct
+ 		hw_params = &ath10k_hw_params_list[i];
+ 
+ 		if (hw_params->id == ar->target_version &&
++		    hw_params->type == ar->target_type &&
+ 		    hw_params->dev_id == ar->dev_id)
+ 			break;
+ 	}
+@@ -1650,6 +1686,22 @@ static int ath10k_core_init_firmware_fea
+ 		ar->htt.max_num_pending_tx = TARGET_10_4_NUM_MSDU_DESC;
+ 		ar->fw_stats_req_mask = WMI_STAT_PEER;
+ 		ar->max_spatial_stream = WMI_10_4_MAX_SPATIAL_STREAM;
++		ar->qcache_active_peers = TARGET_10_4_QCACHE_ACTIVE_PEERS;
++		ar->tx_chain_mask = TARGET_10_4_TX_CHAIN_MASK;
++		ar->rx_chain_mask = TARGET_10_4_RX_CHAIN_MASK;
++		if (ar->hw_rev == ATH10K_HW_QCA40XX) {
++			ar->max_num_peers = TARGET_QCA40XX_NUM_PEERS;
++			ar->max_num_stations = TARGET_QCA40XX_NUM_STATIONS;
++			ar->num_active_peers = TARGET_QCA40XX_ACTIVE_PEERS;
++			ar->max_num_vdevs = TARGET_QCA40XX_NUM_VDEVS;
++			ar->num_tids = TARGET_QCA40XX_TGT_NUM_TIDS;
++			ar->htt.max_num_pending_tx = TARGET_QCA40XX_NUM_MSDU_DESC;
++			ar->fw_stats_req_mask = WMI_STAT_PEER;
++			ar->max_spatial_stream = WMI_QCA40XX_MAX_SPATIAL_STREAM;
++			ar->qcache_active_peers = TARGET_QCA40XX_QCACHE_ACTIVE_PEERS;
++			ar->tx_chain_mask = TARGET_QCA40XX_TX_CHAIN_MASK;
++			ar->rx_chain_mask = TARGET_QCA40XX_RX_CHAIN_MASK;
++		}
+ 		break;
+ 	case ATH10K_FW_WMI_OP_VERSION_UNSET:
+ 	case ATH10K_FW_WMI_OP_VERSION_MAX:
+@@ -1927,6 +1979,7 @@ static int ath10k_core_probe_fw(struct a
+ 	}
+ 
+ 	ar->target_version = target_info.version;
++	ar->target_type = target_info.type;
+ 	ar->hw->wiphy->hw_version = target_info.version;
+ 
+ 	ret = ath10k_init_hw_params(ar);
+--- a/drivers/net/wireless/ath/ath10k/core.h
++++ b/drivers/net/wireless/ath/ath10k/core.h
+@@ -621,6 +621,7 @@ struct ath10k {
+ 	u16 dev_id;
+ 	u32 chip_id;
+ 	u32 target_version;
++	u32 target_type;
+ 	u8 fw_version_major;
+ 	u32 fw_version_minor;
+ 	u16 fw_version_release;
+@@ -657,10 +658,12 @@ struct ath10k {
+ 	struct ath10k_hw_params {
+ 		u32 id;
+ 		u16 dev_id;
++		u32 type;
+ 		const char *name;
+ 		u32 patch_load_addr;
+ 		int uart_pin;
+ 		u32 otp_exe_param;
++		u32 otp_get_chip_ver_param;
+ 
+ 		/* This is true if given HW chip has a quirky Cycle Counter
+ 		 * wraparound which resets to 0x7fffffff instead of 0. All
+@@ -690,6 +693,8 @@ struct ath10k {
+ 		 */
+ 		bool utf_codeswap_support;
+ 
++		enum wmi_host_platform_type platform_type;
++
+ 		struct ath10k_hw_params_fw {
+ 			const char *dir;
+ 			const char *fw;
+@@ -805,6 +810,9 @@ struct ath10k {
+ 	int max_num_tdls_vdevs;
+ 	int num_active_peers;
+ 	int num_tids;
++	int qcache_active_peers;
++	int tx_chain_mask;
++	int rx_chain_mask;
+ 
+ 	struct work_struct svc_rdy_work;
+ 	struct sk_buff *svc_rdy_skb;
+--- a/drivers/net/wireless/ath/ath10k/hw.h
++++ b/drivers/net/wireless/ath/ath10k/hw.h
+@@ -33,6 +33,7 @@
+ 
+ /* QCA988X 2.0 definitions */
+ #define QCA988X_HW_2_0_VERSION		0x4100016c
++#define QCA988X_HW_DEV_TYPE		0x7
+ #define QCA988X_HW_2_0_CHIP_ID_REV	0x2
+ #define QCA988X_HW_2_0_FW_DIR		ATH10K_FW_DIR "/QCA988X/hw2.0"
+ #define QCA988X_HW_2_0_FW_FILE		"firmware.bin"
+@@ -47,6 +48,7 @@
+ #define QCA6174_HW_2_1_VERSION		0x05010000
+ #define QCA6174_HW_3_0_VERSION		0x05020000
+ #define QCA6174_HW_3_2_VERSION		0x05030000
++#define QCA6174_HW_DEV_TYPE		0x8
+ 
+ /* QCA9377 target BMI version signatures */
+ #define QCA9377_HW_1_0_DEV_VERSION	0x05020000
+@@ -92,6 +94,7 @@ enum qca9377_chip_id_rev {
+ 
+ /* QCA99X0 2.0 definitions */
+ #define QCA99X0_HW_2_0_DEV_VERSION     0x01000000
++#define QCA99X0_HW_DEV_TYPE            0x9
+ #define QCA99X0_HW_2_0_CHIP_ID_REV     0x1
+ #define QCA99X0_HW_2_0_FW_DIR          ATH10K_FW_DIR "/QCA99X0/hw2.0"
+ #define QCA99X0_HW_2_0_FW_FILE         "firmware.bin"
+@@ -106,6 +109,15 @@ enum qca9377_chip_id_rev {
+ #define QCA9377_HW_1_0_BOARD_DATA_FILE "board.bin"
+ #define QCA9377_HW_1_0_PATCH_LOAD_ADDR	0x1234
+ 
++/* QCA40XX 1.0 definitions */
++#define QCA40XX_HW_1_0_DEV_VERSION     0x01000000
++#define QCA40XX_HW_DEV_TYPE            0xb
++#define QCA40XX_HW_1_0_FW_DIR          ATH10K_FW_DIR "/QCA40XX/hw1.0"
++#define QCA40XX_HW_1_0_FW_FILE         "firmware.bin"
++#define QCA40XX_HW_1_0_OTP_FILE        "otp.bin"
++#define QCA40XX_HW_1_0_BOARD_DATA_FILE "board.bin"
++#define QCA40XX_HW_1_0_PATCH_LOAD_ADDR  0x1234
++
+ #define ATH10K_FW_API2_FILE		"firmware-2.bin"
+ #define ATH10K_FW_API3_FILE		"firmware-3.bin"
+ 
+@@ -474,6 +486,17 @@ enum ath10k_hw_4addr_pad {
+ #define TARGET_10_4_IPHDR_PAD_CONFIG		1
+ #define TARGET_10_4_QWRAP_CONFIG		0
+ 
++#define TARGET_QCA40XX_NUM_VDEVS			8
++#define TARGET_QCA40XX_NUM_STATIONS                32
++#define TARGET_QCA40XX_NUM_PEERS                   ((TARGET_QCA40XX_NUM_STATIONS) + \
++						 (TARGET_QCA40XX_NUM_VDEVS))
++#define TARGET_QCA40XX_ACTIVE_PEERS                0
++#define TARGET_QCA40XX_TGT_NUM_TIDS                ((TARGET_QCA40XX_NUM_PEERS) * 2)
++#define TARGET_QCA40XX_NUM_MSDU_DESC               2500
++#define TARGET_QCA40XX_QCACHE_ACTIVE_PEERS         35
++#define TARGET_QCA40XX_TX_CHAIN_MASK		(BIT(0) | BIT(1))
++#define TARGET_QCA40XX_RX_CHAIN_MASK		(BIT(0) | BIT(1))
++
+ /* Number of Copy Engines supported */
+ #define CE_COUNT ar->hw_values->ce_count
+ 
+--- a/drivers/net/wireless/ath/ath10k/mac.c
++++ b/drivers/net/wireless/ath/ath10k/mac.c
+@@ -7161,6 +7161,36 @@ static const struct ieee80211_iface_comb
+ 	},
+ };
+ 
++static const struct ieee80211_iface_limit ath10k_qca40xx_10_4_if_limits[] = {
++	{
++		.max = 1,
++		.types = BIT(NL80211_IFTYPE_STATION),
++	},
++	{
++		.max	= 8,
++		.types	= BIT(NL80211_IFTYPE_AP)
++#ifdef CPTCFG_MAC80211_MESH
++			| BIT(NL80211_IFTYPE_MESH_POINT)
++#endif
++	},
++};
++
++static const struct ieee80211_iface_combination ath10k_qca40xx_10_4_if_comb[] = {
++	{
++		.limits = ath10k_qca40xx_10_4_if_limits,
++		.n_limits = ARRAY_SIZE(ath10k_qca40xx_10_4_if_limits),
++		.max_interfaces = 8,
++		.num_different_channels = 1,
++		.beacon_int_infra_match = true,
++#ifdef CPTCFG_ATH10K_DFS_CERTIFIED
++		.radar_detect_widths =	BIT(NL80211_CHAN_WIDTH_20_NOHT) |
++					BIT(NL80211_CHAN_WIDTH_20) |
++					BIT(NL80211_CHAN_WIDTH_40) |
++					BIT(NL80211_CHAN_WIDTH_80),
++#endif
++	},
++};
++
+ static void ath10k_get_arvif_iter(void *data, u8 *mac,
+ 				  struct ieee80211_vif *vif)
+ {
+@@ -7374,9 +7404,17 @@ int ath10k_mac_register(struct ath10k *a
+ 			ARRAY_SIZE(ath10k_10x_if_comb);
+ 		break;
+ 	case ATH10K_FW_WMI_OP_VERSION_10_4:
+-		ar->hw->wiphy->iface_combinations = ath10k_10_4_if_comb;
+-		ar->hw->wiphy->n_iface_combinations =
+-			ARRAY_SIZE(ath10k_10_4_if_comb);
++		if (QCA_REV_40XX(ar)) {
++			ar->hw->wiphy->iface_combinations =
++				ath10k_qca40xx_10_4_if_comb;
++			ar->hw->wiphy->n_iface_combinations =
++				ARRAY_SIZE(ath10k_qca40xx_10_4_if_comb);
++		} else {
++			ar->hw->wiphy->iface_combinations =
++				ath10k_10_4_if_comb;
++			ar->hw->wiphy->n_iface_combinations =
++				ARRAY_SIZE(ath10k_10_4_if_comb);
++		}
+ 		break;
+ 	case ATH10K_FW_WMI_OP_VERSION_UNSET:
+ 	case ATH10K_FW_WMI_OP_VERSION_MAX:
+--- a/drivers/net/wireless/ath/ath10k/targaddrs.h
++++ b/drivers/net/wireless/ath/ath10k/targaddrs.h
+@@ -456,4 +456,7 @@ Fw Mode/SubMode Mask
+ #define QCA99X0_BOARD_DATA_SZ	  12288
+ #define QCA99X0_BOARD_EXT_DATA_SZ 0
+ 
++#define QCA40XX_BOARD_DATA_SZ	  12064
++#define QCA40XX_BOARD_EXT_DATA_SZ 0
++
+ #endif /* __TARGADDRS_H__ */
+--- a/drivers/net/wireless/ath/ath10k/wmi-ops.h
++++ b/drivers/net/wireless/ath/ath10k/wmi-ops.h
+@@ -203,6 +203,8 @@ struct wmi_ops {
+ 	struct sk_buff *(*gen_peer_set_smart_ant_train_info)(struct ath10k *ar,
+ 				u32 vdev_id, const u8 *mac_addr,
+ 				const struct wmi_peer_sant_set_train_arg *arg);
++	struct sk_buff *(*gen_ext_resource_config)(struct ath10k *ar,
++						   enum wmi_host_platform_type type);
+ };
+ 
+ int ath10k_wmi_cmd_send(struct ath10k *ar, struct sk_buff *skb, u32 cmd_id);
+@@ -1448,4 +1450,23 @@ ath10k_wmi_peer_set_smart_ant_train_info
+ 	return ath10k_wmi_cmd_send(ar, skb,
+ 			ar->wmi.cmd->peer_set_smart_ant_train_info_cmdid);
+ }
++
++static inline int
++ath10k_wmi_ext_resource_config(struct ath10k *ar,
++			       enum wmi_host_platform_type type)
++{
++	struct sk_buff *skb;
++
++	if (!ar->wmi.ops->gen_ext_resource_config)
++		return -EOPNOTSUPP;
++
++	skb = ar->wmi.ops->gen_ext_resource_config(ar, type);
++
++	if (IS_ERR(skb))
++		return PTR_ERR(skb);
++
++	return ath10k_wmi_cmd_send(ar, skb,
++				   ar->wmi.cmd->ext_resource_cfg_cmdid);
++}
++
+ #endif
+--- a/drivers/net/wireless/ath/ath10k/wmi.c
++++ b/drivers/net/wireless/ath/ath10k/wmi.c
+@@ -724,6 +724,7 @@ static struct wmi_cmd_map wmi_10_4_cmd_m
+ 	.set_cca_params_cmdid = WMI_10_4_SET_CCA_PARAMS_CMDID,
+ 	.pdev_bss_chan_info_request_cmdid =
+ 			WMI_10_4_PDEV_BSS_CHAN_INFO_REQUEST_CMDID,
++	.ext_resource_cfg_cmdid = WMI_10_4_EXT_RESOURCE_CFG_CMDID,
+ };
+ 
+ /* MAIN WMI VDEV param map */
+@@ -1691,11 +1692,24 @@ void ath10k_wmi_put_wmi_channel(struct w
+ int ath10k_wmi_wait_for_service_ready(struct ath10k *ar)
+ {
+ 	unsigned long time_left;
++	int ret;
+ 
+ 	time_left = wait_for_completion_timeout(&ar->wmi.service_ready,
+ 						WMI_SERVICE_READY_TIMEOUT_HZ);
+ 	if (!time_left)
+ 		return -ETIMEDOUT;
++
++	if (test_bit(WMI_SERVICE_EXT_RES_CFG_SUPPORT, ar->wmi.svc_map) &&
++	    ar->hw_params.platform_type) {
++		ret = ath10k_wmi_ext_resource_config(ar,
++						     ar->hw_params.platform_type);
++		if (ret) {
++			ath10k_warn(ar, "failed to send host platform type : %d\n",
++				    ret);
++			return ret;
++		}
++	}
++
+ 	return 0;
+ }
+ 
+@@ -4616,9 +4630,9 @@ static void ath10k_wmi_event_service_rea
+ 
+ 	if (test_bit(WMI_SERVICE_PEER_CACHING, ar->wmi.svc_map)) {
+ 		ar->max_num_peers = TARGET_10_4_NUM_QCACHE_PEERS_MAX +
+-				    TARGET_10_4_NUM_VDEVS;
+-		ar->num_active_peers = TARGET_10_4_QCACHE_ACTIVE_PEERS +
+-				       TARGET_10_4_NUM_VDEVS;
++				    ar->max_num_vdevs;
++		ar->num_active_peers = ar->qcache_active_peers +
++				       ar->max_num_vdevs;
+ 		ar->num_tids = ar->num_active_peers * 2;
+ 		ar->max_num_stations = TARGET_10_4_NUM_QCACHE_PEERS_MAX;
+ 	}
+@@ -5663,8 +5677,8 @@ static struct sk_buff *ath10k_wmi_10_4_o
+ 			__cpu_to_le32(TARGET_10_4_NUM_OFFLOAD_REORDER_BUFFS);
+ 	config.num_peer_keys  = __cpu_to_le32(TARGET_10_4_NUM_PEER_KEYS);
+ 	config.ast_skid_limit = __cpu_to_le32(TARGET_10_4_AST_SKID_LIMIT);
+-	config.tx_chain_mask  = __cpu_to_le32(TARGET_10_4_TX_CHAIN_MASK);
+-	config.rx_chain_mask  = __cpu_to_le32(TARGET_10_4_RX_CHAIN_MASK);
++	config.tx_chain_mask  = __cpu_to_le32(ar->tx_chain_mask);
++	config.rx_chain_mask  = __cpu_to_le32(ar->rx_chain_mask);
+ 
+ 	config.rx_timeout_pri[0] = __cpu_to_le32(TARGET_10_4_RX_TIMEOUT_LO_PRI);
+ 	config.rx_timeout_pri[1] = __cpu_to_le32(TARGET_10_4_RX_TIMEOUT_LO_PRI);
+@@ -5695,7 +5709,7 @@ static struct sk_buff *ath10k_wmi_10_4_o
+ 	config.vow_config = __cpu_to_le32(TARGET_10_4_VOW_CONFIG);
+ 	config.gtk_offload_max_vdev =
+ 			__cpu_to_le32(TARGET_10_4_GTK_OFFLOAD_MAX_VDEV);
+-	config.num_msdu_desc = __cpu_to_le32(TARGET_10_4_NUM_MSDU_DESC);
++	config.num_msdu_desc = __cpu_to_le32(ar->htt.max_num_pending_tx);
+ 	config.max_frag_entries = __cpu_to_le32(TARGET_10_4_11AC_TX_MAX_FRAGS);
+ 	config.max_peer_ext_stats =
+ 			__cpu_to_le32(TARGET_10_4_MAX_PEER_EXT_STATS);
+@@ -7677,6 +7691,24 @@ ath10k_wmi_op_gen_set_smart_ant_train_in
+ 	return skb;
+ }
+ 
++static struct sk_buff *
++ath10k_wmi_10_4_op_gen_ext_resource_config(struct ath10k *ar,
++					   enum wmi_host_platform_type type)
++{
++	struct wmi_ext_resource_config *cmd;
++	struct sk_buff *skb;
++
++	skb = ath10k_wmi_alloc_skb(ar, sizeof(*cmd));
++	if (!skb)
++		return ERR_PTR(-ENOMEM);
++
++	cmd = (struct wmi_ext_resource_config *)skb->data;
++
++	ath10k_dbg(ar, ATH10K_DBG_WMI,
++		   "host platform type :%d\n", type);
++	return skb;
++}
++
+ static const struct wmi_ops wmi_ops = {
+ 	.rx = ath10k_wmi_op_rx,
+ 	.map_svc = wmi_main_svc_map,
+@@ -8031,6 +8063,7 @@ static const struct wmi_ops wmi_10_4_ops
+ 	/* shared with 10.2 */
+ 	.gen_request_stats = ath10k_wmi_op_gen_request_stats,
+ 	.gen_pdev_get_temperature = ath10k_wmi_10_2_op_gen_pdev_get_temperature,
++	.gen_ext_resource_config = ath10k_wmi_10_4_op_gen_ext_resource_config,
+ };
+ 
+ int ath10k_wmi_attach(struct ath10k *ar)
+--- a/drivers/net/wireless/ath/ath10k/wmi.h
++++ b/drivers/net/wireless/ath/ath10k/wmi.h
+@@ -803,6 +803,7 @@ struct wmi_cmd_map {
+ 	u32 peer_set_smart_tx_ant_cmdid;
+ 	u32 peer_smart_ant_fb_config_cmdid;
+ 	u32 peer_set_smart_ant_train_info_cmdid;
++	u32 ext_resource_cfg_cmdid;
+ };
+ 
+ /*
+@@ -1806,6 +1807,7 @@ enum wmi_channel_change_cause {
+ 
+ #define WMI_MAX_SPATIAL_STREAM        3 /* default max ss */
+ #define WMI_10_4_MAX_SPATIAL_STREAM   4
++#define WMI_QCA40XX_MAX_SPATIAL_STREAM   2
+ 
+ /* HT Capabilities*/
+ #define WMI_HT_CAP_ENABLED                0x0001   /* HT Enabled/ disabled */
+@@ -6463,6 +6465,15 @@ struct wmi_peer_ratecode_list_event {
+ 	struct wmi_peer_rate_info peer_rate_info;
+ } __packed;
+ 
++enum wmi_host_platform_type {
++	WMI_HOST_PLATFORM_HIGH_PERF,
++	WMI_HOST_PLATFORM_LOW_PERF,
++};
++
++struct wmi_ext_resource_config {
++	__le32 host_platform_config;
++} __packed;
++
+ struct ath10k;
+ struct ath10k_vif;
+ struct ath10k_fw_stats_pdev;

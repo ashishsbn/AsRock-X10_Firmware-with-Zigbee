@@ -1,0 +1,27 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006-2011 OpenWrt.org
+
+START=90
+
+USE_PROCD=1
+
+MAC=`ifconfig eth0 | grep HWaddr | awk '{print $5}'`
+NET_MASK=`ifconfig eth0 | grep "inet addr" |awk '{split($0,a,":"); print a[4]}'`
+IP=`ifconfig br-lan | grep "inet addr" |awk '{split($0,a,":"); print a[2]}' | awk '{print $1}'`
+
+start_service () {
+	echo "Starting cloud client."
+        procd_open_instance
+        procd_set_param command /usr/bin/cloud_client $MAC $IP $NET_MASK $IP
+        procd_set_param respawn ${respawn_threshold:-3600} ${respawn_timeout:-5} ${respawn_retry:-5}
+        procd_close_instance
+}
+stop_service(){
+  echo "Cloud client stopped."
+}
+reload_service() {
+  echo "Restarting cloud client"
+  stop
+  start
+}
+

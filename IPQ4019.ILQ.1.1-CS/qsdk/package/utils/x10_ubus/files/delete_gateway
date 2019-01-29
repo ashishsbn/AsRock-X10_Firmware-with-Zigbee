@@ -1,0 +1,24 @@
+#!/bin/sh
+
+scenes_cmd=`echo {\"action\":2,\"group_id\":2,\"scene_id\":2}`
+echo $scenes_cmd
+ubus call zstack scenes $scenes_cmd
+
+#Removing Group
+group_cmd=`echo {\"action\":3,\"dev_addr\":\"00124B0008B15AC7\",\"group_id\":1,\"endpoint_id\":1}`
+echo $group_cmd
+ubus call zstack group $group_cmd
+
+
+
+sqlite3 /etc/orbweb.db "select IEEEAddress from devices;" | while IFS='' read -r line || [[ -n "$line" ]];do
+        var1=`echo {\"dev_addr\":\"$line\"}`
+        ubus call zstack remove $var1
+        sleep 2
+done
+
+rm -rf /etc/gizmo/cronjobs
+rm -rf /etc/orbweb.db
+/etc/init.d/zstack_ubus stop
+/etc/init.d/zstack_ubus start
+

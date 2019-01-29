@@ -1,0 +1,36 @@
+#!/bin/sh
+if [ -e /var/factory ]
+ then
+#    echo "FACTORY: reset button pressed" > /dev/console
+    touch /var/btnresetpressed
+    exit 0
+fi
+
+x10_reset_leds &
+touch /var/stopwanled
+[ "${ACTION}" = "released" ] || exit 0
+killall x10_reset_leds
+. /lib/functions.sh
+
+logger "$BUTTON pressed for $SEEN seconds"
+echo "$SEEN" > /dev/console
+if [ "$SEEN" -lt 5 ]
+then
+    x10_leds_ctl RED_LED 1000
+    x10_leds_ctl BLUE_LED 1
+    echo "REBOOT" > /dev/console
+    sleep 4
+    sync
+    reboot
+elif [ "$SEEN" -ge 5 ]
+then
+    x10_leds_ctl RED_LED 1000
+    x10_leds_ctl BLUE_LED 1
+    echo "ZIGBEE RESET" > /dev/console
+    ubus -S call zstack reset '{"type" : false}' 
+    sleep 4
+    echo "FACTORY RESET" > /dev/console
+    jffs2reset -y && sleep 3 && reboot &
+fi
+
+rm -rf /var/stopwanled

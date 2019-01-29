@@ -1,0 +1,20 @@
+0. Pre-install packages
+	sudo apt-get install gcc g++ binutils patch bzip2 flex make gettext pkg-config unzip zlib1g-dev libc6-dev subversion libncurses5-dev gawk sharutils curl libxml-parser-perl ocaml-nox ocaml-nox ocaml ocaml-findlib libpcre3-dev binutils-gold python-yaml u-boot-tools device-tree-compiler
+1. cd qsdk
+2. make (NOTE: Do not use 'root' to make)
+3. cd ..
+4. cp -af qsdk/bin/ipq806x/openwrt* build/ipq
+5. cd build
+6. ./gen_x10_image.sh
+7. cd bin
+	x10-nor_boot-ipq40xx-single.img			-->	Boot Code
+	x10-nor-ipq40xx-single.img			-->	FW
+	x10-nor_all-ipq40xx-single.img			-->	Boot Code + FW
+	pega_x10-nor_boot-ipq40xx-single.img		-->	Boot Code with Header
+	pega_x10-nor-ipq40xx-single.img			-->	FW with Header
+	pega_x10-nor_all-ipq40xx-single.img		-->	Boot Code + FW with Header
+
+
+# Default root password
+username: root
+password: x7bedgAz

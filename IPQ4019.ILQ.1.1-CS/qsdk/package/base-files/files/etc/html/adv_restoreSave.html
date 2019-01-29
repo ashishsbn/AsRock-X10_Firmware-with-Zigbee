@@ -1,0 +1,206 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/ajaxfileupload.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+var defaultPskInfo;
+
+function restoreDefault()
+{
+  if (!confirm(PopRestoreMsg1)) {
+    return false;
+  }
+  else {
+    $.ajax({
+      url: '/f/defaultConf',
+      dataType: 'json',
+      success: function(data) {
+        console.log("/f/defaultConf success");
+      }
+    });
+
+    requiredData.ssid2g = defaultPskInfo.ssid2g;
+    requiredData.psk2g = defaultPskInfo.psk2g;
+    requiredData.ssid5g = defaultPskInfo.ssid5g;
+    requiredData.psk5g = defaultPskInfo.psk5g;
+
+    waitTimeout=100;
+    showWindow("waitWindow");
+    //Hardcode default IP address
+    newHost = "192.168.1.1";
+    countdownWindow("rebootingDig");
+  }
+}
+
+function exportConfiguration()
+{
+  document.getElementById('invisible').src = "/f/exportConf";
+}
+
+function fileCheck()
+{
+  var oFile = document.getElementById('upfile'); 
+  if (oFile.value == "") {
+    alert(FWUpgradeWarn1);
+    return false;
+  }
+  else {
+    var fileName, allowName;
+    fileName = oFile.value;
+    allowName = ".cfg";
+    if (fileName.indexOf(allowName, fileName.length - allowName.length) == -1) {
+      alert(RestoreWarn2);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function updateConfiguration()
+{
+  $.ajax({
+    url: '/f/restoreConf',
+    dataType: 'json',
+    success: function(result) {
+      requiredData.ssid2g = decodeURIComponent(result.ssid2g);
+      requiredData.psk2g = decodeURIComponent(result.psk2g);
+      requiredData.ssid5g = decodeURIComponent(result.ssid5g);
+      requiredData.psk5g = decodeURIComponent(result.psk5g);
+    }
+  });
+}
+
+function doLocalUpdate()
+{
+  if (!fileCheck()) {
+    return false;
+  }
+
+  if (!confirm(PopRestoreMsg5)) {
+    return false;
+  }
+
+  $.ajaxFileUpload({
+    url : '/f/uploadFile',
+    secureuri : false,
+    fileElementId : 'upfile',
+    dataType : 'json',
+    success: function (data, status){
+      console.log("send file success! msg=" + data.msg);
+      /* open dialog here */
+      if(typeof(data.msg) != 'undefined' && data.msg != "FAIL") {
+        updateConfiguration();
+      } else {
+        alert(PopFWMsg9);
+      }
+    },
+    error: function (data, status, e) {
+      console.log("ajaxFileUpload error");
+    }
+  });
+
+  showWindow("waitWindow");
+  //Cannot predict new IP address so use pre-defined URL.
+  newHost = "asrock.router";
+  countdownWindow("rebootingDig");
+}
+
+$(document).ready(function(){
+  isLoggedIn();
+
+  $('#administrationMenu').parent().removeClass('menu');
+  $('#administrationMenu').parent().addClass('mainmenu');
+  $('#administrationMenu').find('.submenu').addClass('show_menu');
+  $('.show_menu').show();
+  $('#adminRestoreSave').removeClass('show_menu');
+  $('#adminRestoreSave').removeClass('submenu');
+  $('#adminRestoreSave').addClass('mainsubmenu');
+  $('#adminRestoreSave').addClass('show_menu');
+
+  $.ajax({
+    url: "/f/prepareUploade",
+    type: "POST",
+    success: function() {
+    }
+  });
+
+  defaultPskInfo = getData("/f/getWlanDefault");
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td valign="top" height="20">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" valign="top" align="center">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table cellspacing="0" cellpadding="0" border="0">
+                <script type="text/javascript">writeLeftMenu();</script>
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top"><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td colspan="2" align="left"><h4><script>document.write(AdvRestoreSave);</script></h4></td>
+                </tr>
+                <tr>
+                  <td width="37%" align="left" class="style6"><span><script>document.write(AdmRestoreFactoryDefault);</script></span></td>
+                  <td width="63%" align="left" class="style6-2">
+                    <script>document.write("<input id=\"generalRestore\" type=\"button\" style=\"width:150px\" value="+AdmRestoreRestore+" onclick=\"restoreDefault()\"></input></td>");</script>
+                  </td>
+                </tr>
+                <tr>
+                  <iframe id="invisible" style="display:none;"></iframe>
+                  <td align="left" class="style6"><span><script>document.write(AdmRestoreExportSetting);</script></span></td>
+                  <td align="left" class="style6-2"><button style="width:150px" onclick="exportConfiguration()" id="saveingFile"><script>document.write(AdmRestoreExportSetting);</script></button></td>
+                </tr>
+                <tr>
+                  <td align="left" class="style6"><span><script>document.write(AdmRestoreImportSetting);</script></span></td>
+                  <td align="left" class="style6-2">
+                    <input id="upfile" type="file" name="upfile" style="width:150px" size="5" onkeydown="return false" onkeypress="return false" onkeyup="return false" oncontextmenu="return false" contenteditable="false">&nbsp;
+                    <script>document.write("<input id=\"generalUpload\" type=\"button\" value="+AdmRestoreUpload+" name=\"load\" onclick=\"doLocalUpdate()\" style=\"width:150px\">");</script>
+                  </td>
+                </tr>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+      </table></td>
+    </tr>
+    <tr>
+      <td><img width="960" height="8" src="images/UI-new_11.png" /></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+</div>
+<!-- End Save for Web Slices -->
+<script type="text/javascript">
+  writeWindow("cover");
+  writeWindow("waitWindow");
+</script>
+</body>
+</html>

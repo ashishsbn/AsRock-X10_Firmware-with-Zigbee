@@ -1,0 +1,585 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script> 
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+var lanIpAddr, lanNetmask;
+
+function fillDatalist()
+{
+  $.ajax({
+    url:'/f/getDashboardClientList',
+    type: "GET",
+    success: function(result) {
+      for (var i=1; i<=parseInt(result.client[0].num); i++) {
+        var option = $('<option value="' + result.client[i].ipAddr + '">' + 
+                     result.client[i].ipAddr + '(' + 
+                     decodeURIComponent(result.client[i].name) + ')' + '</option>');
+        $('#ipClientInfo').append(option);
+        $('#clientInfo').append(option);
+      }
+    },
+    error : function() {
+      console.log("post /f/getDashboardClientList error");
+    }
+  });
+}
+
+function setData(url)
+{
+  var argu, tableRows, i, cell;
+  
+  argu = "portForwardingEnabled=" + parseValueOfOnOff($('#portForwardingEnabled').val());
+  
+  tableRows = document.getElementById("portForwardingList").getElementsByTagName('tr');
+  argu += "&numOfRules=" + (tableRows.length - 2);
+  
+  for (i = 2; i < tableRows.length; i++) {
+    cell = tableRows[i].getElementsByTagName('td');
+    
+    if (!cell.length) {
+        continue;
+    }
+    
+    argu += "&serviceName" + padZero(i-2, 3, 1) + "=" + encodeURIComponent(cell[0].innerHTML);
+    argu += "&portInfo" + padZero(i-2, 3, 1) + "=" + encodeURIComponent(cell[1].innerHTML);
+    argu += "&localIpAddr" + padZero(i-2, 3, 1) + "=" + cell[2].innerHTML;
+    argu += "&localPortInfo" + padZero(i-2, 3, 1) + "=" + encodeURIComponent(cell[3].innerHTML);
+    var protocol;
+    if (cell[4].innerHTML == WANPortForwardingBoth) {
+      protocol = "tcpudp";
+    }
+    else if (cell[4].innerHTML == WANPortForwardingTCP) {
+      protocol = "tcp";
+    }
+    else if (cell[4].innerHTML == WANPortForwardingUDP) {
+      protocol = "udp";
+    }
+    argu += "&protocol" + padZero(i-2, 3, 1) + "=" + protocol;
+  }
+    
+  console.log(argu);
+  
+  $.ajax({
+    url: url,
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log(result);
+    },
+    error : function() {
+      console.log("post " + url + " error");
+    }
+  });
+  
+  return true;
+}
+
+function checkPortForwardingEnable(switchThis)
+{
+  if($('#' + switchThis.id).val() == "ON") {
+    $('select#presetList').removeAttr('disabled');
+    $('input[name="serviceName"]').removeAttr('disabled');
+	$('input[name="portRange1"]').removeAttr('disabled');
+	$('input[name="portRange2"]').removeAttr('disabled');
+	$('input[name="localIpAddr"]').removeAttr('disabled');
+	$('input[name="localPortRange1"]').removeAttr('disabled');
+	$('select#protocol').removeAttr('disabled');
+	$('#portForwardingListAdd').removeAttr('disabled');
+	$('[class=portForwardingListDel]').removeAttr('disabled');
+  }
+  else {
+    $('select#presetList').attr('disabled', 'disabled');
+    $('input[name="serviceName"]').attr('disabled', 'disabled');
+	$('input[name="portRange1"]').attr('disabled', 'disabled');
+	$('input[name="portRange2"]').attr('disabled', 'disabled');
+	$('input[name="localIpAddr"]').attr('disabled', 'disabled');
+	$('input[name="localPortRange1"]').attr('disabled', 'disabled');
+	$('select#protocol').attr('disabled', 'disabled');
+	$('#portForwardingListAdd').attr('disabled', 'disabled');
+	$('[class=portForwardingListDel]').attr('disabled', 'disabled');
+  }
+}
+
+function addPresetRule()
+{
+  if ($('select#presetList').val() != "0") {
+    showWindow('ipWindow');
+    $('input#ipWindowIpAddr').focus();
+  }
+}
+
+function afterAssign()
+{
+  checkPortForwardingEnable(document.getElementById('portForwardingEnabled'));
+}
+
+function checkPortForwardingRange(startPort, endPort, localStartPort)
+{
+  if (parseInt(startPort) > parseInt(endPort) || (parseInt(localStartPort) + (parseInt(endPort) - parseInt(startPort))) > 65535 ) {
+    return false;
+  }
+  
+  return true;
+}
+
+function calculateLocalPortEnd()
+{
+  var startPort, endPort, localStartPort;
+  
+  startPort = $('input[name="portRange1"]').val();
+  endPort = $('input[name="portRange2"]').val();
+  localStartPort = $('input[name="localPortRange1"]').val();
+  if (checkPortNumber(startPort) && checkPortNumber(endPort) && checkPortNumber(localStartPort)) {
+    if (checkPortForwardingRange(startPort, endPort, localStartPort)) {
+      $('input[name="localPortRange2"]').val((parseInt(localStartPort) + (parseInt(endPort) - parseInt(startPort))) + "");
+    }
+  }
+}
+
+function addPortForwardingRule(preset, name, portInfo, localIpAddr, localPortInfo, protocol)
+{
+  var startPort, endPort;
+  var tableRows, i, cell;
+  
+  tableRows = document.getElementById("portForwardingList").getElementsByTagName('tr');
+  for (i = 2; i < tableRows.length; i++) {
+    cell = tableRows[i].getElementsByTagName('td');
+    
+    if (!cell.length) {
+        continue;
+    }
+    
+    // Check if ports are in use. Copy from G10
+    if (preset == "1") {
+      if (cell[1].innerHTML == portInfo && cell[2].innerHTML == $("#ipWindowIpAddr").val() &&
+          cell[3].innerHTML == localPortInfo) {
+          if (cell[4].innerHTML == protocol || protocol == "Both") {
+            alert(WANPortForwardingConflict);
+            return false;
+          }
+      }
+    }
+    else if (preset == "0"){
+      var startPort, endPort, usedStartPort, usedEndPort, usedProtocol;
+      startPort = parseInt(portInfo.split(":")[0]);
+      endPort = parseInt(portInfo.split(":")[1]);
+      usedStartPort = parseInt(cell[1].innerHTML.split(":")[0]);
+      usedEndPort = cell[1].innerHTML.split(":")[1];
+      if (usedEndPort.indexOf(",")) {
+        usedEndPort = parseInt(usedEndPort.split(",")[0]);
+      }
+      else {
+        usedEndPort = parseInt(usedEndPort);
+      }
+      usedProtocol = cell[4].innerHTML;
+      if ((startPort >= usedStartPort && startPort <= usedEndPort) ||
+          (endPort >= usedStartPort && endPort <= usedEndPort) ||
+          (startPort <= usedStartPort && endPort >= usedEndPort)) {
+        if (usedProtocol == "Both" || usedProtocol == protocol) {
+          alert(WANPortForwardingConflict);
+          return false;
+        }
+      }
+    }
+  }
+  
+  var body, bodyServiceName, bodyPortRange, bodyLocalIpAddr, bodyLocalPortRange, bodyProtocol, bodyDelete;
+  bodyServiceName = {"align" : "center", "wordBreakAll" : "1", "value" : name};
+  bodyPortRange = {"align" : "center", "wordBreakAll" : "1", "value" : portInfo};
+  bodyLocalIpAddr = {"align" : "center", "value" : localIpAddr};
+  bodyLocalPortRange = {"align" : "center", "wordBreakAll" : "1", "value" : localPortInfo};
+  bodyProtocol = {"align" : "center", "value" : protocol};
+  bodyDelete = {"classes" : "portForwardingListDel", "isImage" : "1", "imgSrc" : "images/icon-.png"};
+  if ((($('#portForwardingListTableBody').children().length) % 2) == 0) {
+    bodyServiceName["bgcolor"] = "#333333";
+	bodyPortRange["bgcolor"] = "#333333";
+	bodyLocalIpAddr["bgcolor"] = "#333333";
+	bodyLocalPortRange["bgcolor"] = "#333333";
+	bodyProtocol["bgcolor"] = "#333333";
+	bodyDelete["bgcolor"] = "#333333";
+  }
+  body = [bodyServiceName, bodyPortRange, bodyLocalIpAddr, bodyLocalPortRange, bodyProtocol, bodyDelete];      
+  $('#portForwardingListTableBody').append(newTableBody(body));
+  
+  return true;
+}
+
+function addPresetPortForwardingRule()
+{
+  var localIpAddr = '', name = '';
+  var portInfo = '', protocol = '', portInfo2 = '', protocol2 = '';
+  var ret;
+  
+  localIpAddr = $('input#ipWindowIpAddr').val();
+  if (!checkIPAddr(localIpAddr)) {
+    alert(InvalidIpAddress);
+    $('input#ipWindowIpAddr').focus();
+    return false;
+  }
+
+  if (!isSameSubnet(localIpAddr, lanIpAddr, lanNetmask)) {
+    alert(InvalidIpAddress);
+    $('input[name="localIpAddr"]').focus();
+    return false;
+  }
+
+  // Fill pre-set parameters
+  switch($('select#presetList').val()) {
+    case '1':
+      name = "FTP";
+      portInfo = "20:21";
+      protocol = WANPortForwardingTCP;
+      break;
+    case '2':
+      name = "HTTP";
+      portInfo = "80:80,443:443";
+      protocol = WANPortForwardingTCP;
+      break;
+    case '3':
+      name = "Telnet";
+      portInfo = "23:23";
+      protocol = WANPortForwardingTCP;
+      break;
+    case '4':  
+      name = "Diablo 3";
+      portInfo = "1119:1119,6881:6999";
+      protocol = WANPortForwardingBoth;
+      break;
+    case '5':
+      name = "WoW";
+      portInfo = "3724:3724,6112:6112,6881:6999";
+      protocol = WANPortForwardingBoth;
+      break;
+    case '6':
+      name = "CounterStrike";
+      portInfo = "1200:1200,3478:3478,4379:4380,27000:27030";
+      protocol = WANPortForwardingUDP;
+      portInfo2 = "27014:27050";
+      protocol2 = WANPortForwardingTCP;
+      break;
+    case '7':
+      name = "LoL";
+      portInfo = "5000:5500";
+      protocol = WANPortForwardingUDP;
+      portInfo2 = "2099:2099,5222:5223,8393:8400";
+      protocol2 = WANPortForwardingTCP;
+      break;
+    case '8':
+      name = "LiveBox";
+      portInfo = "53:53,88:88,3074:3074";
+      protocol = WANPortForwardingUDP;
+      portInfo2 = "53:53,80:80,3074:3074";
+      protocol2 = WANPortForwardingTCP;
+      break;
+    case '9':
+      name = "PS3";
+      portInfo = "3478:3478,3479:3479,3658:3658";
+      protocol = WANPortForwardingUDP;
+      portInfo2 = "80:80,443:443,5223:5223";
+      protocol2 = WANPortForwardingTCP;
+      break;
+    case '10':
+      name = "PS4";
+      portInfo = "3478:3478,3479:3479,3658:3658";
+      protocol = WANPortForwardingUDP;
+      portInfo2 = "80:80,443:443,5223:5223";
+      protocol2 = WANPortForwardingTCP;
+      break;
+  }
+  
+  closeIpWindow();
+  
+  ret = addPortForwardingRule("1", name, portInfo, localIpAddr, portInfo, protocol);
+  
+  if (ret == true && portInfo2.length != 0) {
+    ret = addPortForwardingRule("1", name, portInfo2, localIpAddr, portInfo2, protocol2);
+  }
+  
+  return ret;
+}
+
+function addUserDefinedPortForwardingRule()
+{
+  var name, portInfo, startPort, endPort, localIpAddr, localPortInfo, localStartPort, localEndPort, protocol;
+  var portData;
+  var ret;
+  
+  if($('#portForwardingEnabled').val() == "OFF")
+    return false;
+  
+  name = $('input[name="serviceName"]').val();
+  startPort = $('input[name="portRange1"]').val();
+  endPort = $('input[name="portRange2"]').val();
+  localIpAddr = $('input[name="localIpAddr"]').val();
+  localStartPort = $('input[name="localPortRange1"]').val();
+  localEndPort = $('input[name="localPortRange2"]').val();
+  protocol = $('select#protocol').val();
+  if (protocol == "tcpudp") {
+    protocol = WANPortForwardingBoth;
+  }
+  else if (protocol == "tcp") {
+    protocol = WANPortForwardingTCP;
+  }
+  else if (protocol == "udp") {
+    protocol = WANPortForwardingUDP;
+  }
+
+  if (name.length < 1) {
+    alert(NATServiceWarn);
+    $('input[name="serviceName"]').focus();
+    return false;
+  }
+
+  if (!checkIPAddr(localIpAddr)) {
+    alert(InvalidIpAddress);
+    $('input[name="localIpAddr"]').focus();
+    return false;
+  }
+
+  if (!isSameSubnet(localIpAddr, lanIpAddr, lanNetmask)) {
+    alert(InvalidIpAddress);
+    $('input[name="localIpAddr"]').focus();
+    return false;
+  }
+
+  portData = ["portRange1", "portRange2", "localPortRange1"];
+  for (i = 0; i < portData.length; i++) {
+    if (!checkPortNumber($('input[name="' + portData[i] + '"]').val())) {
+      alert(PortForwardWarn1);
+      $('input[name="' + portData[i] + '"]').focus();
+      return false;
+    }
+  }
+  
+  if (!checkPortForwardingRange($('input[name="' + portData[0] + '"]').val(),
+                                $('input[name="' + portData[1] + '"]').val(),
+                                $('input[name="' + portData[2] + '"]').val())) {
+    alert(PortForwardWarn2);
+    return false;
+  }
+  
+  portInfo = startPort + ":" + endPort;
+  localPortInfo = localStartPort + ":" + localEndPort;
+  ret = addPortForwardingRule("0", name, portInfo, localIpAddr, localPortInfo, protocol);
+  if (ret == true) {
+    //Empty input fields
+    $('input[name="serviceName"]').val("");
+    $('input[name="portRange1"]').val("");
+    $('input[name="portRange2"]').val("");
+    $('input[name="localIpAddr"]').val("");
+    $('input[name="localPortRange1"]').val("");
+    $('input[name="localPortRange2"]').val("");
+    $('select#protocol').val("tcpudp");
+  }
+  
+  return ret;
+}
+
+function deletePortForwardingRule()
+{
+  if($('#portForwardingEnabled').val() == "OFF")
+    return false;
+  
+  if (!confirm(LANWarn7)) {
+    return false;
+  }
+  else {
+    $(this).closest('tr').remove();
+  }
+}
+
+function closeIpWindow()
+{
+  $('select#presetList').val('0');
+  $('input#ipWindowIpAddr').val("");
+  closeWindow('ipWindow');
+}
+
+function ipWindowApply()
+{
+  addPresetPortForwardingRule();
+}
+
+function doPortForwardingApply()
+{
+  
+}
+
+function ipWindowCancel()
+{
+  closeIpWindow();
+}
+
+$(document).ready(function() {
+  console.log("document ready!!!");
+  isLoggedIn();
+
+  /* Setup the Menu, expand the WAN items */
+  $('#wanMenu').parent().removeClass('menu');
+  $('#wanMenu').parent().addClass('mainmenu');
+  $('#wanMenu').find('.submenu').addClass('show_menu');
+  $('.show_menu').show();
+  $('#wanPortForwarding').removeClass('show_menu');
+  $('#wanPortForwarding').removeClass('submenu');
+  $('#wanPortForwarding').addClass('mainsubmenu');
+  $('#wanPortForwarding').addClass('show_menu');
+
+  switchOnOff(WANPortForwarding, "portForwardingEnabled", checkPortForwardingEnable);
+  var presetList = {"0" : WANAddpresetlist, "1" : "FTP", "2" : "HTTP", "3" : "Telnet", 
+                    "4" : "Diablo 3", "5" : "WoW", "6" : "CounterStrike", "7" : "LoL", 
+                    "8" : "Xbox Live", "9" : "PS3", "10" : "PS4"};
+  select("", "presetList", presetList, addPresetRule);
+  $('select#presetList').parent().attr('align', 'right');
+  
+  var id, head, body, protocolList;
+  protocolList = {"tcpudp" : WANPortForwardingBoth, "tcp" : WANPortForwardingTCP, "udp" : WANPortForwardingUDP};
+  id = "portForwardingList";
+  head = [{"desc" : WANService, "width" : "10%", "align" : "center"},
+          {"desc" : WANPortRange, "width" : "20%", "align" : "center"},
+          {"desc" : WANLocalIP, "width" : "20%", "align" : "center"},
+          {"desc" : WANLocalPort, "width" : "20%", "align" : "center"},
+          {"desc" : WANTCPUDP, "width" : "10%", "align" : "center"},
+          {"desc" : WANAddDelete, "width" : "20%", "align" : "center"}];
+  body = [{"align" : "center", "bgcolor" : "#333333", "isInput" : "1", "inputWidth" : "80%", "maxSize": "18", "name" : "serviceName"},
+          {"align" : "center", "bgcolor" : "#333333", "isDualInput" : "1", "inputSize" : "3", "inputWidth" : "35%", "maxSize": "5", "separator" : ":", "name" : "portRange"}, 
+          {"align" : "center", "bgcolor" : "#333333", "isInput" : "1", "inputWidth" : "90%", "maxSize": "15", "name" : "localIpAddr"}, 
+          {"align" : "center", "bgcolor" : "#333333", "isDualInput" : "1", "inputSize" : "3", "inputWidth" : "35%", "maxSize": "5", "separator" : ":", "name" : "localPortRange"}, 
+		  {"id" : "protocol", "bgcolor" : "#333333", "align" : "center", "isSelect" : "1", "optionList" : protocolList}, 
+          {"id" : id + "Add", "bgcolor" : "#333333", "isImage" : "1", "imgSrc" : "images/icon+.png"}];
+  tableList(id, head, body, "100%");
+  $('input[name="portRange1"]').change(calculateLocalPortEnd);
+  $('input[name="portRange2"]').change(calculateLocalPortEnd);
+  $('input[name="localPortRange1"]').change(calculateLocalPortEnd);
+  $('input[name="localPortRange2"]').attr('disabled', 'disabled');
+  $('#' + id + 'Add').click(addUserDefinedPortForwardingRule);
+  $('#' + id + 'TableBody').on("click", '.' + id + 'Del', deletePortForwardingRule);
+  
+  addDatalist('input[name="localIpAddr"]', 'clientInfo');
+  
+  var portForwardingInfo = getData("/f/getPortForwarding");
+  if (portForwardingInfo != null) {
+    if (portForwardingInfo[0].portForwardingEnabled == "0") {
+      $('#portForwardingEnabled').val("OFF");
+    }
+    else if (portForwardingInfo[0].portForwardingEnabled == "1") {
+      $('#portForwardingEnabled').val("ON");
+      $('span#portForwardingEnabled').trigger("click");
+    }
+
+    lanIpAddr = portForwardingInfo[0].lanIpAddr;
+    lanNetmask = portForwardingInfo[0].lanNetmask;
+
+    for (i = 1; i < portForwardingInfo.length; i++) {
+      if (portForwardingInfo[i].protocol == "tcpudp") {
+        portForwardingInfo[i].protocol = WANPortForwardingBoth;
+      }
+      else if (portForwardingInfo[i].protocol == "tcp") {
+        portForwardingInfo[i].protocol = WANPortForwardingTCP;
+      }
+      else if (portForwardingInfo[i].protocol == "udp") {
+        portForwardingInfo[i].protocol = WANPortForwardingUDP;
+      }
+      
+      addPortForwardingRule("2", decodeURIComponent(portForwardingInfo[i].serviceName), 
+                            decodeURIComponent(portForwardingInfo[i].portInfo), portForwardingInfo[i].localIpAddr, 
+                            decodeURIComponent(portForwardingInfo[i].localPortInfo), portForwardingInfo[i].protocol);
+    }
+  }
+  
+  afterAssign();
+  
+  fillDatalist();
+  
+  /* Apply action */
+  $('#Apply').click(function(event) {
+    console.log("apply click...");
+    setData("/f/setPortForwarding");
+    showWindow("waitWindow");
+    countdownWindow("waitingDig");
+  });
+  
+  /* Cancel action */
+  $('#Cancel').click(function(event) {
+    console.log("cancel click...");
+    refresh();
+  });
+  
+  /* Actions for ipWindow */
+  $('#ipWindowApply').click(function(event) {
+    ipWindowApply();
+  });
+  $('#ipWindowCancel').click(function(event) {
+    ipWindowCancel();
+  });
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" align="center" valign="top">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                <script type="text/javascript">writeLeftMenu();</script> 
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top"><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td colspan="2" align="left"><h4><script>document.write(WANPortForwarding);</script></h4></td>
+                </tr>
+                <tr>
+                   <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                </tr>
+                <tr id="portForwardingEnabled">
+                </tr>
+                <tr id="presetList">
+                </tr>
+                <tr id="portForwardingList">
+                </tr>
+                <script type="text/javascript">writeApplyCancel();</script>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+</div>
+<!-- End Save for Web Slices -->
+<script type="text/javascript">
+  writeWindow("ipWindow");
+  writeWindow("cover");
+  writeWindow("waitWindow");
+</script>
+</body>
+</html>

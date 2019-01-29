@@ -1,0 +1,45 @@
+--- a/drivers/net/wireless/ath/ath10k/core.c
++++ b/drivers/net/wireless/ath/ath10k/core.c
+@@ -92,6 +92,7 @@ static const struct ath10k_hw_params ath
+ 		.otp_get_chip_ver_param = BMI_PARAM_GET_EEPROM_BOARD_ID,
+ 		.channel_counters_freq_hz = 88000,
+ 		.max_probe_resp_desc_thres = 0,
++		.hw_4addr_pad = ATH10K_HW_4ADDR_PAD_AFTER,
+ 		.fw = {
+ 			.dir = QCA6174_HW_2_1_FW_DIR,
+ 			.fw = QCA6174_HW_2_1_FW_FILE,
+@@ -197,6 +198,7 @@ static const struct ath10k_hw_params ath
+ 		.otp_exe_param = 0,
+ 		.channel_counters_freq_hz = 88000,
+ 		.max_probe_resp_desc_thres = 0,
++		.hw_4addr_pad = ATH10K_HW_4ADDR_PAD_AFTER,
+ 		.fw = {
+ 			.dir = QCA9377_HW_1_0_FW_DIR,
+ 			.fw = QCA9377_HW_1_0_FW_FILE,
+@@ -215,6 +217,7 @@ static const struct ath10k_hw_params ath
+ 		.otp_exe_param = 0,
+ 		.channel_counters_freq_hz = 88000,
+ 		.max_probe_resp_desc_thres = 0,
++		.hw_4addr_pad = ATH10K_HW_4ADDR_PAD_AFTER,
+ 		.fw = {
+ 			.dir = QCA9377_HW_1_0_FW_DIR,
+ 			.fw = QCA9377_HW_1_0_FW_FILE,
+@@ -237,6 +240,7 @@ static const struct ath10k_hw_params ath
+ 		.max_probe_resp_desc_thres = 24,
+ 		.platform_type = WMI_HOST_PLATFORM_LOW_PERF,
+ 		.utf_codeswap_support = true,
++		.hw_4addr_pad = ATH10K_HW_4ADDR_PAD_BEFORE,
+ 		.fw = {
+ 			.dir = QCA40XX_HW_1_0_FW_DIR,
+ 			.fw = QCA40XX_HW_1_0_FW_FILE,
+--- a/drivers/net/wireless/ath/ath10k/htt_rx.c
++++ b/drivers/net/wireless/ath/ath10k/htt_rx.c
+@@ -1119,7 +1119,7 @@ static void ath10k_htt_rx_h_undecap_nwif
+ 	/* pull decapped header and copy SA & DA */
+ 	if ((ar->hw_params.hw_4addr_pad == ATH10K_HW_4ADDR_PAD_BEFORE) &&
+ 	    ieee80211_has_a4(((struct ieee80211_hdr *)first_hdr)->frame_control)) {
+-		/* The QCA99X0 4 address mode pad 2 bytes at the
++		/* The QCA99X0 & QCA40XX 4 address mode pad 2 bytes at the
+ 		 * beginning of MSDU
+ 		 */
+ 		hdr = (struct ieee80211_hdr *)(msdu->data + 2);

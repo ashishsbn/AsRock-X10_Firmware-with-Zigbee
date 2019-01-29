@@ -1,0 +1,205 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script> 
+<script type="text/javascript" src="includes/ip_calc.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+
+
+function switchRemoteOnOff(swithThis)
+{
+  console.log("switch state :" + $('#remoteenabled').val()+",swithThis :"+swithThis);
+  var enabled = $('#remoteenabled').val();
+  if(enabled == "OFF"){
+     $('input#remoteip').attr('disabled',true);
+	 $('input#remoteport').attr('disabled',true);
+  }else{
+    $('input#remoteip').attr('disabled',false);
+	$('input#remoteport').attr('disabled',false);
+  }
+  
+}
+
+function setData(url) {
+  var argu;
+ 
+  var remoteenable = $('#remoteenabled').val();
+ // var remoteip = $('input#remoteip').val();
+ // var remoteport = $('input#remoteport').val();
+  
+  if(remoteenable == "ON"){
+    argu = "&RemoteManagmentenabled=1";
+  }
+  else { 
+    argu = "&RemoteManagmentenabled=0";
+  }
+  
+  if(($("input#remoteip").val() != "0.0.0.0")&&(!checkIPAddr( $("input#remoteip").val() ))){
+      alert(InvalidIpAddress);
+      $("input#remoteip").focus();
+      return false;
+  }
+  
+  
+  if(!checkPortNumber($('input#remoteport').val())){
+      alert(InvalidPortValue);
+      $("input#remoteport").focus();
+      return false;
+  }
+  
+  argu += "&RemoteIpaddress="+$("input#remoteip").val();
+  argu += "&RemotePort="+$("input#remoteport").val();
+  
+  $.ajaxSetup({
+    async: false
+  });
+
+  $.ajax({
+    url: url,
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log(result);
+    },
+    error : function() {
+      console.log("post " + url + " error");
+    }
+  });
+
+  $.ajaxSetup({
+    async: true
+  });
+  
+  return true;
+}
+
+$(document).ready(function() {
+  isLoggedIn();
+  console.log("document ready!!!");
+  
+  /* Empty category arrays */
+  emptyElementArrays();
+
+  $('#wanMenu').parent().removeClass('menu');
+  $('#wanMenu').parent().addClass('mainmenu');
+  $('#wanMenu').find('.submenu').addClass('show_menu');
+  $('.show_menu').show();
+  $('#wanRemoteManagement').removeClass('show_menu');
+  $('#wanRemoteManagement').removeClass('submenu');
+  $('#wanRemoteManagement').addClass('mainsubmenu');
+  $('#wanRemoteManagement').addClass('show_menu');
+
+  switchOnOff(RemoteManagement, "remoteenabled", switchRemoteOnOff);
+  text(RemoteManagementHostIP, "remoteip",null,0);
+  $('input#remoteip').attr('size', 20);
+  $('input#remoteip').attr('maxlength', 15);
+  text(RemoteManagementPort, "remoteport",null,0);
+  $('input#remoteport').attr('size', 20);
+  $('input#remoteport').attr('maxlength', 5);
+  
+  var remotemanagmentInfo = getData("/f/getRemoteManagment");
+ 
+  if(remotemanagmentInfo!=null){
+    $.each(remotemanagmentInfo,function(key,value){
+	  if(key == "RemoteManagmentEnabled"){
+	     
+  		 if(value == "0"){
+		   $('#remoteenabled').val("OFF");
+		   $('input#remoteip').attr('disabled',true);
+		   $('input#remoteport').attr('disabled',true);
+		 }else{
+  			$('span#remoteenabled').trigger("click");
+  			$('#remoteenabled').val("ON");
+  		 }
+	  }
+	  if(key == "Ipaddress")
+	    $('input#remoteip').val(value);
+	  
+	  if(key == "Port")
+	    $('input#remoteport').val(value);
+	});
+	
+  }
+  
+   $("#Apply").click(function(event){
+  
+    if (setData("/f/setRemoteManagment")) {
+      showWindow("waitWindow");
+      countdownWindow("waitingDig");
+	  }
+  });
+  
+  $("#Cancel").click(function(event) {
+    console.log("cancel click...");
+    refresh();
+  });  
+  
+});
+
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" align="center" valign="top">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                <script type="text/javascript">writeLeftMenu();</script> 
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top"><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td colspan="2" align="left"><h4><script>document.write(RemoteManagement);</script></h4></td>
+                </tr>
+                <tr>
+                   <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                </tr>
+                <tr id="remoteenabled">
+                </tr>
+                <tr id="remoteip">
+                </tr>
+                <tr id="remoteport">
+                </tr>
+                <script type="text/javascript">writeApplyCancel();</script>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+</div>
+<!-- End Save for Web Slices -->
+<script type="text/javascript">writeWindow("cover");</script>
+<script type="text/javascript">writeWindow("waitWindow");</script>
+</body>
+</html>

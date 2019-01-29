@@ -1,0 +1,364 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script> 
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+function setData(url)
+{
+  var argu, tableRows, i, cell;
+  
+  argu = "portTriggerEnabled=" + parseValueOfOnOff($('#portTriggerEnabled').val());
+  
+  tableRows = document.getElementById("portTriggerList").getElementsByTagName('tr');
+  argu += "&numOfRules=" + (tableRows.length - 2);
+  
+  for (i = 2; i < tableRows.length; i++) {
+    cell = tableRows[i].getElementsByTagName('td');
+    
+    if (!cell.length) {
+        continue;
+    }
+    
+    argu += "&serviceName" + padZero(i-2, 3, 1) + "=" + encodeURIComponent(cell[0].innerHTML);
+    argu += "&triggerPortInfo" + padZero(i-2, 3, 1) + "=" + encodeURIComponent(cell[1].innerHTML);
+    argu += "&incomingPortInfo" + padZero(i-2, 3, 1) + "=" + encodeURIComponent(cell[2].innerHTML);
+    var protocol;
+    if (cell[3].innerHTML == WANPortForwardingBoth) {
+      protocol = "tcpudp";
+    }
+    else if (cell[3].innerHTML == WANPortForwardingTCP) {
+      protocol = "tcp";
+    }
+    else if (cell[3].innerHTML == WANPortForwardingUDP) {
+      protocol = "udp";
+    }
+    argu += "&protocol" + padZero(i-2, 3, 1) + "=" + protocol;
+  }
+    
+  console.log(argu);
+  
+  $.ajax({
+    url: url,
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log(result);
+    },
+    error : function() {
+      console.log("post " + url + " error");
+    }
+  });
+  
+  return true;
+}
+
+function checkPortTriggerEnable(switchThis)
+{
+  if($('#' + switchThis.id).val() == "ON") {
+    $('input[name="serviceName"]').removeAttr('disabled');
+	$('input[name="triggerPort"]').removeAttr('disabled');
+	$('input[name="incomingPortRange1"]').removeAttr('disabled');
+	$('input[name="incomingPortRange2"]').removeAttr('disabled');
+	$('select#protocol').removeAttr('disabled');
+	$('#portTriggerListAdd').removeAttr('disabled');
+	$('[class=portTriggerListDel]').removeAttr('disabled');
+  }
+  else {
+    $('input[name="serviceName"]').attr('disabled', 'disabled');
+	$('input[name="triggerPort"]').attr('disabled', 'disabled');
+	$('input[name="incomingPortRange1"]').attr('disabled', 'disabled');
+	$('input[name="incomingPortRange2"]').attr('disabled', 'disabled');
+	$('select#protocol').attr('disabled', 'disabled');
+	$('#portTriggerListAdd').attr('disabled', 'disabled');
+	$('[class=portTriggerListDel]').attr('disabled', 'disabled');
+  }
+}
+
+
+function afterAssign()
+{
+  checkPortTriggerEnable(document.getElementById('portTriggerEnabled'));
+}
+
+function checkPortTriggerRange( incomingStartPort, incomingEndPort)
+{
+  if (parseInt(incomingStartPort) > parseInt(incomingEndPort) ) {
+    return false;
+  }
+  
+  return true;
+}
+
+
+function addPortTriggerRule(name, triggerPortInfo, incomingPortInfo, protocol)
+{
+  var startPort, endPort;
+  var tableRows, i, cell;
+  
+  tableRows = document.getElementById("portTriggerList").getElementsByTagName('tr');
+  for (i = 2; i < tableRows.length; i++) {
+    cell = tableRows[i].getElementsByTagName('td');
+    
+    if (!cell.length) {
+        continue;
+    }
+    
+    // Check if ports are in use. Copy from G10
+      var startPort, endPort, usedStartPort, usedEndPort, usedProtocol;
+      startPort = parseInt(incomingPortInfo.split(":")[0]);
+      endPort = parseInt(incomingPortInfo.split(":")[1]);
+      usedStartPort = parseInt(cell[2].innerHTML.split(":")[0]);
+      usedEndPort = cell[2].innerHTML.split(":")[1];
+      if (usedEndPort.indexOf(",")) {
+        usedEndPort = parseInt(usedEndPort.split(",")[0]);
+      }
+      else {
+        usedEndPort = parseInt(usedEndPort);
+      }
+      usedProtocol = cell[3].innerHTML;
+      if ((startPort >= usedStartPort && startPort <= usedEndPort) ||
+          (endPort >= usedStartPort && endPort <= usedEndPort) ||
+          (startPort <= usedStartPort && endPort >= usedEndPort)) {
+        if (usedProtocol == "Both" || usedProtocol == protocol) {
+          alert(WANPortForwardingConflict);
+          return false;
+        }
+      }
+  }
+  
+  var body, bodyServiceName, bodyTriggerPort, bodyIncomingPortRange, bodyProtocol, bodyDelete;
+  bodyServiceName = {"align" : "center", "wordBreakAll" : "1", "value" : name};
+  bodyTriggerPort = {"align" : "center", "wordBreakAll" : "1", "value" : triggerPortInfo};
+  bodyIncomingPortRange = {"align" : "center", "wordBreakAll" : "1", "value" : incomingPortInfo};
+  bodyProtocol = {"align" : "center", "value" : protocol};
+  bodyDelete = {"classes" : "portTriggerListDel", "isImage" : "1", "imgSrc" : "images/icon-.png"};
+  if ((($('#portTriggerListTableBody').children().length) % 2) == 0) {
+    bodyServiceName["bgcolor"] = "#333333";
+	bodyTriggerPort["bgcolor"] = "#333333";
+	bodyIncomingPortRange["bgcolor"] = "#333333";
+	bodyProtocol["bgcolor"] = "#333333";
+	bodyDelete["bgcolor"] = "#333333";
+  }
+  body = [bodyServiceName, bodyTriggerPort, bodyIncomingPortRange, bodyProtocol, bodyDelete];      
+  $('#portTriggerListTableBody').append(newTableBody(body));
+  
+  return true;
+}
+
+function addUserDefinedPortTriggerRule()
+{
+  var name, triggerPortInfo, incomingPortInfo, incomingStartPort, incomingEndPort, protocol;
+  var portData;
+  var ret;
+  
+  if($('#portTriggerEnabled').val() == "OFF")
+    return false;
+  
+  name = $('input[name="serviceName"]').val();
+  triggerPortInfo = $('input[name="triggerPort"]').val();
+  incomingStartPort = $('input[name="incomingPortRange1"]').val();
+  incomingEndPort = $('input[name="incomingPortRange2"]').val();
+  protocol = $('select#protocol').val();
+  if (protocol == "tcpudp") {
+    protocol = WANPortForwardingBoth;
+  }
+  else if (protocol == "tcp") {
+    protocol = WANPortForwardingTCP;
+  }
+  else if (protocol == "udp") {
+    protocol = WANPortForwardingUDP;
+  }
+
+  if (name.length < 1) {
+    alert(NATServiceWarn);
+    $('input[name="serviceName"]').focus();
+    return false;
+  }
+
+  portData = ["triggerPort", "incomingPortRange1", "incomingPortRange2"];
+  for (i = 0; i < portData.length; i++) {
+    if (!checkPortNumber($('input[name="' + portData[i] + '"]').val())) {
+      alert(PortForwardWarn1);
+      $('input[name="' + portData[i] + '"]').focus();
+      return false;
+    }
+  }
+  
+  if (!checkPortTriggerRange($('input[name="' + portData[1] + '"]').val(),
+                                $('input[name="' + portData[2] + '"]').val())) {
+    alert(PortForwardWarn2);
+    return false;
+  }
+  
+  incomingPortInfo = incomingStartPort + ":" + incomingEndPort;
+  ret = addPortTriggerRule( name, triggerPortInfo, incomingPortInfo, protocol);
+  if (ret == true) {
+    //Empty input fields
+    $('input[name="serviceName"]').val("");
+    $('input[name="triggerPort"]').val("");
+    $('input[name="incomingPortRange1"]').val("");
+    $('input[name="incomingPortRange2"]').val("");
+    $('select#protocol').val("tcp");
+  }
+  
+  return ret;
+}
+
+function deletePortTriggerRule()
+{
+  if($('#portTriggerEnabled').val() == "OFF")
+    return false;
+  
+  if (!confirm(LANWarn7)) {
+    return false;
+  }
+  else {
+    $(this).closest('tr').remove();
+  }
+}
+
+
+$(document).ready(function() {
+  console.log("document ready!!!");
+  isLoggedIn();
+
+  /* Setup the Menu, expand the WAN items */
+  $('#wanMenu').parent().removeClass('menu');
+  $('#wanMenu').parent().addClass('mainmenu');
+  $('#wanMenu').find('.submenu').addClass('show_menu');
+  $('.show_menu').show();
+  $('#wanPortTrigger').removeClass('show_menu');
+  $('#wanPortTrigger').removeClass('submenu');
+  $('#wanPortTrigger').addClass('mainsubmenu');
+  $('#wanPortTrigger').addClass('show_menu');
+
+  switchOnOff(WANPortTrigger, "portTriggerEnabled", checkPortTriggerEnable);
+  var id, head, body, protocolList;
+  protocolList = {"tcp" : WANPortForwardingTCP, "udp" : WANPortForwardingUDP};
+  id = "portTriggerList";
+  head = [{"desc" : WANService, "width" : "15%", "align" : "center"},
+          {"desc" : WANTriggerPort, "width" : "30%", "align" : "center"},
+          {"desc" : WANIncomingPort, "width" : "20%", "align" : "center"},
+          {"desc" : WANTCPUDP, "width" : "10%", "align" : "center"},
+          {"desc" : WANAddDelete, "width" : "25%", "align" : "center"}];
+  body = [{"align" : "center", "bgcolor" : "#333333", "isInput" : "1", "inputWidth" : "80%", "maxSize": "18", "name" : "serviceName"},
+          {"align" : "center", "bgcolor" : "#333333", "isInput" : "1", "inputWidth" : "80%", "maxSize": "5",  "name" : "triggerPort"}, 
+          {"align" : "center", "bgcolor" : "#333333", "isDualInput" : "1", "inputSize" : "3", "inputWidth" : "40%", "maxSize": "5", "separator" : ":", "name" : "incomingPortRange"}, 
+		  {"id" : "protocol", "bgcolor" : "#333333", "align" : "center", "isSelect" : "1", "optionList" : protocolList}, 
+          {"id" : id + "Add", "bgcolor" : "#333333", "isImage" : "1", "imgSrc" : "images/icon+.png"}];
+  tableList(id, head, body, "100%");
+  $('#' + id + 'Add').click(addUserDefinedPortTriggerRule);
+  $('#' + id + 'TableBody').on("click", '.' + id + 'Del', deletePortTriggerRule);
+  
+  var portTriggerInfo = getData("/f/getPortTrigger");
+  if (portTriggerInfo != null) {
+    if (portTriggerInfo[0].portTriggerEnabled == "0") {
+      $('#portTriggerEnabled').val("OFF");
+    }
+    else if (portTriggerInfo[0].portTriggerEnabled == "1") {
+      $('#portTriggerEnabled').val("ON");
+      $('span#portTriggerEnabled').trigger("click");
+    }
+    
+    for (i = 1; i < portTriggerInfo.length; i++) {
+      if (portTriggerInfo[i].protocol == "tcpudp") {
+        portTriggerInfo[i].protocol = WANPortForwardingBoth;
+      }
+      else if (portTriggerInfo[i].protocol == "tcp") {
+        portTriggerInfo[i].protocol = WANPortForwardingTCP;
+      }
+      else if (portTriggerInfo[i].protocol == "udp") {
+        portTriggerInfo[i].protocol = WANPortForwardingUDP;
+      }
+      
+      addPortTriggerRule (decodeURIComponent(portTriggerInfo[i].serviceName), 
+                            decodeURIComponent(portTriggerInfo[i].triggerPortInfo), 
+                            decodeURIComponent(portTriggerInfo[i].incomingPortInfo), 
+                            portTriggerInfo[i].protocol);
+    }
+  }
+  
+  afterAssign();
+  
+  /* Apply action */
+  $('#Apply').click(function(event) {
+    console.log("apply click...");
+    setData("/f/setPortTrigger");
+    showWindow("waitWindow");
+    countdownWindow("waitingDig");
+  });
+  
+  /* Cancel action */
+  $('#Cancel').click(function(event) {
+    console.log("cancel click...");
+    refresh();
+  });
+  
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" align="center" valign="top">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                <script type="text/javascript">writeLeftMenu();</script> 
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top"><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td colspan="2" align="left"><h4><script>document.write(WANPortTrigger);</script></h4></td>
+                </tr>
+                <tr>
+                   <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                </tr>
+                <tr id="portTriggerEnabled">
+                </tr>
+                <tr id="portTriggerList">
+                </tr>
+                <script type="text/javascript">writeApplyCancel();</script>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+			</div>
+<!-- End Save for Web Slices -->
+<script type="text/javascript">
+  writeWindow("cover");
+  writeWindow("waitWindow");
+</script>
+</body>
+</html>

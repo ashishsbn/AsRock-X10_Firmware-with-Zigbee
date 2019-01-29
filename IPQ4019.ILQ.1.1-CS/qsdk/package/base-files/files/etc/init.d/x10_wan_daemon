@@ -1,0 +1,19 @@
+#!/bin/sh /etc/rc.common
+# (C) 2008 openwrt.org
+
+START=96
+
+boot() {
+	x10_wan_led &
+	x10_wan_mon &
+}
+
+start() {
+	x10_wan_led &
+	x10_wan_mon &
+}
+
+stop() {
+	killall x10_wan_led
+	killall x10_wan_mon
+}

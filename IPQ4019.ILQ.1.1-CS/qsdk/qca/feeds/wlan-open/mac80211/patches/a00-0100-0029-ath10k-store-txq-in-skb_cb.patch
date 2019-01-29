@@ -1,0 +1,100 @@
+--- a/drivers/net/wireless/ath/ath10k/core.h
++++ b/drivers/net/wireless/ath/ath10k/core.h
+@@ -101,6 +101,7 @@ struct ath10k_skb_cb {
+ 	u8 eid;
+ 	u16 msdu_id;
+ 	struct ieee80211_vif *vif;
++	struct ieee80211_txq *txq;
+ } __packed;
+ 
+ struct ath10k_skb_rxcb {
+--- a/drivers/net/wireless/ath/ath10k/mac.c
++++ b/drivers/net/wireless/ath/ath10k/mac.c
+@@ -3325,6 +3325,7 @@ static void ath10k_tx_h_add_p2p_noa_ie(s
+ 
+ static void ath10k_mac_tx_h_fill_cb(struct ath10k *ar,
+ 				    struct ieee80211_vif *vif,
++				    struct ieee80211_txq *txq,
+ 				    struct sk_buff *skb)
+ {
+ 	struct ieee80211_hdr *hdr = (void *)skb->data;
+@@ -3341,6 +3342,7 @@ static void ath10k_mac_tx_h_fill_cb(stru
+ 		cb->flags |= ATH10K_SKB_F_QOS;
+ 
+ 	cb->vif = vif;
++	cb->txq = txq;
+ }
+ 
+ bool ath10k_mac_tx_frm_has_freq(struct ath10k *ar)
+@@ -3674,7 +3676,7 @@ static int ath10k_mac_tx_push_txq(struct
+ 		return -ENOENT;
+ 	}
+ 
+-	ath10k_mac_tx_h_fill_cb(ar, vif, skb);
++	ath10k_mac_tx_h_fill_cb(ar, vif, txq, skb);
+ 
+ 	txmode = ath10k_mac_tx_h_get_txmode(ar, vif, sta, skb);
+ 	txpath = ath10k_mac_tx_h_get_txpath(ar, skb, txmode);
+@@ -3799,6 +3801,27 @@ void ath10k_mac_tx_push_pending(struct a
+ 	spin_unlock_bh(&ar->htt.tx_lock);
+ }
+ 
++static void ath10k_mac_txq_unref(struct ath10k *ar,
++				 struct ieee80211_txq *txq)
++{
++	struct ath10k_skb_cb *cb;
++	struct sk_buff *msdu;
++	int msdu_id;
++
++	if (!txq)
++		return;
++
++	spin_lock_bh(&ar->htt.tx_lock);
++
++	idr_for_each_entry(&ar->htt.pending_tx, msdu, msdu_id) {
++		cb = ATH10K_SKB_CB(msdu);
++		if (cb->txq == txq)
++			cb->txq = NULL;
++	}
++
++	spin_unlock_bh(&ar->htt.tx_lock);
++}
++
+ /************/
+ /* Scanning */
+ /************/
+@@ -3970,6 +3993,7 @@ static void ath10k_mac_op_tx(struct ieee
+ 	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
+ 	struct ieee80211_vif *vif = info->control.vif;
+ 	struct ieee80211_sta *sta = control->sta;
++	struct ieee80211_txq *txq = NULL;
+ 	struct ieee80211_hdr *hdr = (void *)skb->data;
+ 	enum ath10k_hw_txrx_mode txmode;
+ 	enum ath10k_mac_tx_path txpath;
+@@ -3978,7 +4002,7 @@ static void ath10k_mac_op_tx(struct ieee
+ 	bool is_presp;
+ 	int ret;
+ 
+-	ath10k_mac_tx_h_fill_cb(ar, vif, skb);
++	ath10k_mac_tx_h_fill_cb(ar, vif, txq, skb);
+ 
+ 	txmode = ath10k_mac_tx_h_get_txmode(ar, vif, sta, skb);
+ 	txpath = ath10k_mac_tx_h_get_txpath(ar, skb, txmode);
+@@ -5029,6 +5053,7 @@ static void ath10k_remove_interface(stru
+ 	spin_unlock_bh(&ar->data_lock);
+ 
+ 	ath10k_peer_cleanup(ar, arvif->vdev_id);
++	ath10k_mac_txq_unref(ar, vif->txq);
+ 
+ 	if (vif->type == NL80211_IFTYPE_MONITOR) {
+ 		ar->monitor_arvif = NULL;
+@@ -5890,6 +5915,9 @@ static int ath10k_sta_state(struct ieee8
+ 		}
+ 		spin_unlock_bh(&ar->data_lock);
+ 
++		for (i = 0; i < ARRAY_SIZE(sta->txq); i++)
++			ath10k_mac_txq_unref(ar, sta->txq[i]);
++
+ 		if (!sta->tdls)
+ 			goto exit;
+ 

@@ -1,0 +1,840 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/jquery-ui.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/dashboard.js"></script>
+<script type="text/javascript" src="includes/dashboard-br.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<link rel="stylesheet" type="text/css" href="jquery-ui.css" />
+<style>
+  .ui-widget-content { border: none; background: transparent }
+  #lightingSlider .ui-slider-handle { border: none; background: transparent url("images/lighting-bar1.png") 50% 50% no-repeat; }
+  #lightingSlider .ui-slider-handle:focus { outline: none; }
+  #lightingSlider .ui-slider-range { background: transparent url("images/lighting-bar.png"); }
+</style>
+<script type="text/javascript">
+var imgOn = "botton-new01-over.png";
+var imgOnLighting = "botton-new01-over-lighting.png";
+var imgOff = "botton-new01-nol.png";
+var imgDisabled = "botton-new01-no.png";
+var imgOver = "botton-new03-over.png";
+var imgOut = "botton-new03-nol.png";
+var imgDisabled2 = "botton-new03-no.png";
+var iconWizard = "botton04-5.png";
+var iconParentalControl = "botton04-2.png";
+var iconGuest = "botton04-1.png";
+var iconWifi = "botton04-4.png";
+var iconAdvanced = "botton04.png";
+var iconWan = "botton04-6.png";
+var iconSelfHealing = "botton04-8.png";
+var iconLighting = "botton04-3.png";
+var iconVpn = "botton04-10.png";
+var iconSmartHome = "botton04-11.png";
+var lanInfo, apInfo;
+var confirmToAct = "";
+var dashboardFwDownloading, dashboardFwUpgrading;
+var tmpLanStatus = 0, newFwchecked = 0;
+var applySettings = 0;
+
+function changeOnOffImg(id, on)
+{
+  if (on == 1) {
+    if (id == "dashLighting") {
+      $('#' + id).css('background-image', 'url(images/' + imgOnLighting + ')');
+    }
+    else {
+      $('#' + id).css('background-image', 'url(images/' + imgOn + ')');
+    }
+  }
+  else {
+    $('#' + id).css('background-image', 'url(images/' + imgOff + ')');
+  }
+}
+
+function changeOnOffSwitch(id, value)
+{
+  if (value == "0") {
+    value = "OFF";
+  }
+  else if (value == "1") {
+    value = "ON";
+  }
+  $('#' + id).val(value);
+  changeOnOffStat(document.getElementById(id));
+}
+
+function turnOnOffService(name, on, timeout)
+{
+  var argu;
+  
+  if (on == 1) {
+    argu = "action=turnOn";
+  }
+  else {
+    argu = "action=turnOff";
+  }
+  
+  argu += "&service=" + name;
+  
+  $.ajax({
+    url: "/f/br/setBrDashboardOnOff",
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log(result);
+    },
+    error : function() {
+      console.log("post /f/br/setBrDashboardOnOff error");
+    }
+  });
+  
+  waitTimeout = timeout;
+  showWindow("waitWindow");
+  countdownWindow("waitingDig");
+  
+  return true;
+}
+
+function adjustLightingLevel(level)
+{
+  var argu;
+
+  argu = "level=" + level;
+
+  $.ajax({
+    url: "/f/br/setBrDashboardLighting",
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log(result);
+    },
+    error : function() {
+      console.log("post /f/br/setBrDashboardLighting error");
+    }
+  });
+
+  waitTimeout = 5;
+  showWindow("waitWindow");
+  countdownWindow("waitingDig");
+
+  return true;
+}
+
+function defaultBrLanWindow()
+{
+  var lanType;
+
+  if (lanInfo.lanType == "static") {
+    lanType = WANStatic;
+  }
+  else if (lanInfo.lanType == "dhcp") {
+    lanType = WANDynamic;
+  }
+
+  $('span#rootApSsid').html(decodeURIComponent(lanInfo.rootApSsid));
+  $('span#lanType').html(lanType);
+  if (parseInt(lanInfo.rootApBand) == 0) {
+    $('span#rootApBand').html(Dash24G);
+  }
+  else {
+    $('span#rootApBand').html(Dash5G);
+  }
+  $('span#rootApLinkRate').html(lanInfo.rootApLinkRate + " Mbps");
+
+  if (parseInt(lanInfo.rootApLinkRate) == 0) {
+    $('#rootApLinkQuality').attr("src", "images/Wifi-1.png");
+  }
+  else {
+    $('#rootApLinkQuality').attr("src", "images/Wifi-" + Math.floor(parseInt(lanInfo.rootApLinkQuality)/25 + 1) + ".png");
+  }
+}
+
+function goToRescan()
+{
+  refresh('br/adv_wlan_rescan.html');
+  return true;
+}
+
+function defaultBrWindow()
+{
+  $('span#lanIpAddr').html(apInfo.lanIpAddr);
+  $('span#lanMacAddr').html(apInfo.lanMacAddr);
+}
+
+function setAp()
+{
+  var argu = "";
+
+  applySettings = 1;
+
+  $.ajax({
+    url: "/f/br/setBrDashboardAp",
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log(result);
+    },
+    error : function() {
+      console.log("post /f/br/setBrDashboardAp error");
+    }
+  });
+
+  closeWindow("dashboardBrWindow");
+  showWindow("waitWindow");
+  countdownWindow("waitingDig");;
+
+  return true;
+}
+
+function dashboardDisablePsk()
+{
+  var authMode;
+  
+  authMode = parseInt($('select#wlanAuthMode2g').val());
+  if (authMode == 0) {
+    $('input#wlanPsk2g').attr('disabled', 'disabled');
+  }
+  else {
+    $('input#wlanPsk2g').removeAttr('disabled');
+  }
+  
+  authMode = $('select#wlanAuthMode5g').val();
+  if (authMode == 0) {
+    $('input#wlanPsk5g').attr('disabled', 'disabled');
+  }
+  else {
+    $('input#wlanPsk5g').removeAttr('disabled');
+  }
+}
+
+function getClientList()
+{
+  $.ajax({
+    url:'/f/br/getDashboardClientList',
+    type: "GET",
+    success: function(result) {
+      var tableHeader = '<tr>\
+                           <td class="style8">&nbsp;</td>\
+                           <td align="center" class="style5" bgcolor="#666666"><h5>' + DashIPAddr + '</h5></td>\
+                           <td align="center" class="style5" bgcolor="#666666"><h5>' + DashDeviceName + '</h5></td>\
+                           <td align="center" class="style5" bgcolor="#666666"><h5>' + DashMACAddr + '</h5></td>\
+                         </tr>';
+      $('#wiredTable').empty();
+      $('#wirelessTable').empty();
+      $('#wiredTable').append(tableHeader);
+      $('#wirelessTable').append(tableHeader);
+      $('#numOfClient').html('(' + result.client[0].num + ')');
+      if (parseInt(result.client[0].num) == 0) {
+        MM_swapImage('clientImage','','images/icon03-b.png',1);
+      }
+      else {
+        MM_swapImage('clientImage','','images/icon03.png',1);
+        var i, wired = 1, wireless = 1;
+        var index, tableId, html, bgColor;
+        for (i=1; i<=parseInt(result.client[0].num); i++) {
+          if (parseInt(result.client[i].type) == 1) {
+            index = wired;
+            wired++;
+            tableId = 'wiredTable';
+          }
+          else {
+            index = wireless;
+            wireless++;
+            tableId = 'wirelessTable';
+          }
+          if (index%2 == 1) {
+            bgColor = 'bgcolor="#494949"';
+          }
+          else {
+            bgColor = '';
+          }
+          html = '<tr>';
+          html += '<td align="center" class="style8">' + index + '</td>';
+          html += '<td align="center" class="style5" ' + bgColor + '>' + result.client[i].ipAddr + '</td>';
+          html += '<td align="center" class="style5" ' + bgColor + '>' + decodeURIComponent(result.client[i].name) + '</td>';
+          html += '<td align="center" class="style5" ' + bgColor + '>' + result.client[i].macAddr + '</td>';
+          html += '</tr>';
+          $('#' + tableId).append(html);
+        }
+      }
+    },
+    error : function() {
+      console.log("post /f/br/getDashboardClientList error");
+    }
+  });
+
+  if (applySettings == 0) {
+    setTimeout(getClientList, 10000);
+  }
+}
+
+function refreshDashboard()
+{
+  var dashboardInfo, lanStatus, lanIp, lanSubnetMask, dnsIpAddr, gwIpAddr;
+  var opModes, fwVersion;
+
+  dashboardInfo = getData("/f/br/getBrDashboard");
+  if (dashboardInfo != null) {
+    lanInfo = dashboardInfo.lan;
+    defaultBrLanWindow();
+    if (parseInt(dashboardInfo.lan.internetConnected) == 1) {
+      tmpLanStatus = 1;
+      lanStatus = AdvInternet + ": " + DashConnected + "<br />";
+      $('#upper_bg').css('background-image', 'url(images/line1-link.png)');
+    }
+    else {
+      tmpLanStatus = newFwchecked = 0;
+      $('#newFwInfo').hide();
+      lanStatus = AdvInternet + ": " + DashDisconnected + "<br />";
+      $('#upper_bg').css('background-image', 'url(images/line1-nol.png)');
+    }
+	lanIp = DashLANIP + ":&nbsp;" + dashboardInfo.lan.lanIp + "<br />";
+	lanSubnetMask = AdvSubnetMask + ":&nbsp;" + dashboardInfo.lan.lanSubnetMask + "<br />";
+    var dnsArray = dashboardInfo.lan.dnsServer.split(" ");
+    dnsIpAddr = DashDNS + ":&nbsp;" + dnsArray[0] + "<br />";
+    gwIpAddr = WANGateway + ":&nbsp;" + dashboardInfo.lan.gwIp + "<br />";
+    $('#lanInfo').html(lanStatus + lanIp + lanSubnetMask + gwIpAddr + dnsIpAddr);
+
+    apInfo = dashboardInfo.ap;
+    $('select#wlanAuthMode2g').change(dashboardDisablePsk);
+    $('select#wlanAuthMode5g').change(dashboardDisablePsk);
+    defaultBrWindow();
+    opModes = AdvWirelessOMode + ": " + OpModeSTA + "<br />";
+    fwVersion = AdvFWVersion + ": " + dashboardInfo.ap.firmwareVersion + "<br />";
+    $('#apInfo').html(opModes + fwVersion);
+
+    showUSBList(dashboardInfo);
+  }
+
+  if (tmpLanStatus==1 && newFwchecked == 0) {
+      checkNewFw();
+  }
+
+  if (applySettings == 0) {
+    setTimeout(refreshDashboard, 10000);
+  }
+}
+
+function showUSBList(dashboardInfo) {
+  // Remove all USB first
+  var usbTarget = ["DISK1a", "DISK1b", "DISK1c", "DISK1d", "DISK2a", "DISK2b", "DISK2c", "DISK2d"];
+  for (var i = 0; i < usbTarget.length; i++) {
+    $('#usbTable tr#' + usbTarget[i] + '_TableTR').remove();
+  }
+
+  if (parseInt(dashboardInfo.usb[0].num) == 0) {
+    MM_swapImage('usbImage','','images/icon04-nol.png',1);
+  }
+  else {
+    MM_swapImage('usbImage','','images/icon04.png',1);
+    var html, i;
+    for(i=1; i<=parseInt(dashboardInfo.usb[0].num) ; i++) {
+      if(dashboardInfo.usb[i].capacity != "") {
+        html = '<tr id="'+ dashboardInfo.usb[i].target +'_TableTR">';
+        html += '<td align="center" class="style5" id="'+ dashboardInfo.usb[i].target +'_TableTD" bgcolor="#494949" width="20%"><h5>' + dashboardInfo.usb[i].label + '</h5></td>';
+        html += '<td align="center" class="style5" id="'+ dashboardInfo.usb[i].target +'_TableTD" bgcolor="#494949" width="25%"><h5>' + dashboardInfo.usb[i].capacity + '</h5></td>';
+        html += '<td align="center" class="style5" id="'+ dashboardInfo.usb[i].target +'_TableTD" bgcolor="#494949" width="25%"><h5>' + dashboardInfo.usb[i].free + '</h5></td>';
+        html += '<td align="center" class="style5" id="'+ dashboardInfo.usb[i].target +'_TableTD" bgcolor="#494949" width="25%"><h5>' + dashboardInfo.usb[i].application + '</h5></td>';
+        if (dashboardInfo.usb[i].label == " ") {
+          html += '<td  bgcolor="#494949" width="25%"></td>';
+        }
+        else {
+          html += '<td align="center" class="style5" id="'+ dashboardInfo.usb[i].target +'_TableTD" bgcolor="#494949" width="5%"><h5><input name="input" id="'+ dashboardInfo.usb[i].target +'" type="checkbox"></h5></td>';
+        }
+        html += '</tr>';
+        $('#usbTable').append(html);
+      }
+    }
+  }
+}
+
+function removeUSB() {
+  var RemoveIndex=0;
+  var count=0;
+
+  if($("[name='input']").length==0) {
+      alert(DashWarn2);
+      return false;
+  }
+
+  $.ajaxSetup({async: false});
+  while( RemoveIndex < $("[name='input']").length ) {
+    if ($("[name='input']")[RemoveIndex].checked==true) {
+      var IDName=$("[name='input']")[RemoveIndex].id
+      console.log("IDName = ["+ IDName +"]");
+
+      $.ajax({
+        url: "/f/br/setRemoveUSB",
+        type: "POST",
+        data: "target=" + IDName,
+        dataType: "json",
+        success: function(result) {
+          console.log("post /f/br/setRemoveUSB success");
+        },
+        error : function() {
+          console.log("post /f/br/setRemoveUSB error");
+        }
+      });
+      count++;
+    }
+    RemoveIndex++;
+  }
+  $.ajaxSetup({async: true});
+
+  if (count==0) {
+    alert(DownloadWarn1);
+    return false;
+  }
+  else {
+    alert(USBWarn1);
+    var dashboardInfo = getData("/f/br/getBrDashboard");
+    if (dashboardInfo) showUSBList(dashboardInfo);
+  }
+}
+
+var blinkToggle=1;
+function blinkNewFwInfo()
+{
+  var str;
+
+  if (blinkToggle) {
+    blinkToggle = 0;
+    str = "&nbsp;";
+  }
+  else {
+    blinkToggle = 1;
+    str = DashNewFw;
+  }
+  $('#newFwInfo').html(str);
+
+  if (tmpLanStatus == 1) {
+    setTimeout(blinkNewFwInfo, 1000);
+  }
+  else {
+    blinkToggle = 0;
+    $('#newFwInfo').hide();
+  }
+}
+
+function checkNewFw()
+{
+  newFwchecked = 1;
+
+  $.ajax({
+    url: "/f/br/wizardGetFw",
+    type: "GET",
+    success: function(result) {
+      if (parseInt(result.haveNewFw) == 1) {
+        $('#newFwInfo').html(DashNewFw);
+        $('#newFwInfo').show();
+        $("#newFwInfo").click(function(event){
+          event.stopPropagation();
+          confirmUpgradeFw();
+        });
+        setTimeout(blinkNewFwInfo, 1000);
+      }
+    },
+    error : function() {
+      console.log("get /f/br/wizardGetFw error");
+      fwData = null;
+    }
+  });
+}
+
+function confirmUpgradeFw()
+{
+  confirmToAct = "upgradeFw";
+  showWindow("waitWindow");
+  $('#confirmUpgradeDig').show();
+  $('#applyConfirm').show();
+}
+
+function dashboardCheckFwDownload()
+{
+  $.ajax({
+    url: "/f/br/wizardGetFwDownload",
+    type: "GET",
+    success: function(result) {
+      if (parseInt(result.result) == -1) {
+        alert(DownloadWarn3);
+        refresh();
+      }
+      else {
+        if (parseInt(result.result) == 1) {
+          dashboardFwDownloading = 0;
+          dashboardSendFwUpgrade();
+        }
+        setTimeout(dashboardUpgradeFwProcess, 3000);
+      }
+    },
+    error : function() {
+      console.log("get /f/br/wizardGetFwDownload error");
+      setTimeout(dashboardUpgradeFwProcess, 3000);
+    }
+  });
+}
+
+function dashboardCheckFwUpgrade()
+{
+  if (remainingTime <= 80) {
+    $.ajax({
+      url: "/f/br/wizardGetDefault",
+      type: "GET",
+      dataType: "jsonp",
+      crossDomain: false,
+      success: function(result) {
+        refresh();
+      },
+      error : function() {
+        console.log("get /f/br/wizardGetDefault error");
+        setTimeout(dashboardUpgradeFwProcess, 3000);
+      }
+    });
+  }
+  else {
+    setTimeout(dashboardUpgradeFwProcess, 3000);
+  }
+}
+
+function dashboardSendFwUpgrade()
+{
+  $.ajax({
+    url: "/f/br/wizardUpgradeFw",
+    type: "POST",
+    dataType: "json",
+    success: function(result) {
+      dashboardFwUpgrading = 1;
+    },
+    error : function() {
+      console.log("get /f/br/wizardUpgradeFw error");
+    }
+  });
+}
+
+function dashboardUpgradeFwProcess()
+{
+  if (dashboardFwDownloading == 1) {
+    dashboardCheckFwDownload();
+  }
+  else {
+    dashboardCheckFwUpgrade();
+  }
+}
+
+function dashboardUpgradeFw()
+{
+  console.log("Upgrade FW ...");
+  waitTimeout = 360;
+  showWindow("waitWindow");
+  countdownWindow("fwUpgradeDig");
+  timerStop = 1;
+  applySettings = 1;
+
+  dashboardFwDownloading = dashboardFwUpgrading = 0;
+  $.ajax({
+    url: "/f/br/wizardDownloadFw",
+    type: "POST",
+    dataType: "json",
+    success: function(result) {
+      console.log("get /f/br/wizardDownloadFw success");
+    },
+    error : function() {
+      console.log("get /f/br/wizardDownloadFw error");
+    }
+  });
+  dashboardFwDownloading = 1;
+  dashboardUpgradeFwProcess();
+}
+
+$(document).ready(function() {
+  var lanStatus, lanIp, lanSubnetMask, dnsIpAddr, gwIpAddr;
+  var opModes, fwVersion;
+
+  isLoggedIn();
+ 
+  /* Draw items */
+  dashboardButton(DashWizard, "dashWizard", imgOut, iconWizard);
+  dashboardButton(DashVpn, "dashVpn", imgDisabled2, iconVpn);
+  dashboardButton(DashParentalControl, "dashParentalControl", imgDisabled2, iconParentalControl);
+  dashboardButton(DashSmartHome, "dashSmartHome", imgOut, iconSmartHome);
+  dashboardButton(DashAdvance, "dashAdvanced", imgOut, iconAdvanced);
+
+  dashboardButton(AdvWAN, "dashWan", imgDisabled, iconWan);
+  dashboardButton(AdvSelfHealing, "dashSelfHealing", imgOff, iconSelfHealing);
+  dashboardButtonSlider(DashLighting, "dashLighting", imgOn, iconLighting); //Load imgOn in early stage to avoid FF can't show imgOn correctly
+  dashboardButton(DashGuest, "dashGuest", imgDisabled, iconGuest);
+  dashboardButton(DashWiFi, "dashWifi", imgDisabled, iconWifi);
+
+  /* Add actions */
+  $('#dashWizard').mouseover(function(event) {
+    $('#dashWizard').css('background-image', 'url(images/' + imgOver + ')');
+  });
+  $('#dashWizard').mouseout(function(event) {
+    $('#dashWizard').css('background-image', 'url(images/' + imgOut +')');
+  });
+  $('#dashWizard').click(function(event) {
+    refresh('br/wizard.html');
+  });
+
+  $('#dashAdvanced').mouseover(function(event) {
+    $('#dashAdvanced').css('background-image', 'url(images/' + imgOver + ')');
+  });
+  $('#dashAdvanced').mouseout(function(event) {
+    $('#dashAdvanced').css('background-image', 'url(images/' + imgOut + ')');
+  });
+  $('#dashAdvanced').click(function(event) {
+    refresh('br/adv_system_panel.html');
+  });
+
+  $('#dashSelfHealing').click(function(event) {
+    var img = $('#dashSelfHealing').css('background-image');
+    if (img.indexOf(imgOn) > -1) {
+      // Turn Off
+      turnOnOffService('selfHealing', 0, 5);
+    }
+    else {
+      // Turn On -> Redirect
+      refresh('br/adv_selfHealing.html');
+    }
+  });
+  
+  $('#dashLighting').click(function(event) {
+    var img = $('#dashLighting').css('background-image');
+    if (img.indexOf(imgOnLighting) > -1) {
+      // Turn Off
+      turnOnOffService('lighting', 0, 5);
+    }
+    else {
+      // Turn On
+      turnOnOffService('lighting', 1, 5);
+    }
+  });
+
+  $('#dashSmartHome').mouseover(function(event) {
+    $('#dashSmartHome').css('background-image', 'url(images/' + imgOver + ')');
+  });
+  $('#dashSmartHome').mouseout(function(event) {
+    $('#dashSmartHome').css('background-image', 'url(images/' + imgOut + ')');
+  });
+  $('#dashSmartHome').click(function(event) {
+    refresh('br/adv_home_sensors.html');
+  });
+
+  var dashboardInfo = getData("/f/br/getBrDashboard");
+  if (dashboardInfo != null) {
+    lanInfo = dashboardInfo.lan;
+    defaultBrLanWindow();
+    if (parseInt(dashboardInfo.lan.internetConnected) == 1) {
+      tmpLanStatus = 1;
+      lanStatus = AdvInternet + ": " + DashConnected + "<br />";
+      $('#upper_bg').css('background-image', 'url(images/line1-link.png)');
+    }
+    else {
+      lanStatus = AdvInternet + ": " + DashDisconnected + "<br />";
+      $('#upper_bg').css('background-image', 'url(images/line1-nol.png)');
+    }
+	lanIp = DashLANIP + ":&nbsp;" + dashboardInfo.lan.lanIp + "<br />";
+	lanSubnetMask = AdvSubnetMask + ":&nbsp;" + dashboardInfo.lan.lanSubnetMask + "<br />";
+    var dnsArray = dashboardInfo.lan.dnsServer.split(" ");
+    dnsIpAddr = DashDNS + ":&nbsp;" + dnsArray[0] + "<br />";
+    gwIpAddr = WANGateway + ":&nbsp;" + dashboardInfo.lan.gwIp + "<br />";
+    $('#lanInfo').html(lanStatus + lanIp + lanSubnetMask + gwIpAddr + dnsIpAddr);
+    
+    apInfo = dashboardInfo.ap;
+    $('select#wlanAuthMode2g').change(dashboardDisablePsk);
+    $('select#wlanAuthMode5g').change(dashboardDisablePsk);
+    defaultBrWindow();
+    opModes = AdvWirelessOMode + ": " + OpModeSTA + "<br />";
+    fwVersion = AdvFWVersion + ": " + dashboardInfo.ap.firmwareVersion + "<br />";
+    $('#apInfo').html(opModes + fwVersion);
+
+    showUSBList(dashboardInfo);
+
+    changeOnOffImg('dashSelfHealing', parseInt(dashboardInfo.selfHealing.enabled));
+    changeOnOffImg('dashLighting', parseInt(dashboardInfo.lighting.enabled));
+    if (parseInt(dashboardInfo.lighting.enabled) != 0) {
+      $("#lightingSlider").slider({
+        value: parseInt(dashboardInfo.lighting.level),
+        range: "min",
+        min: 25,
+        max: 100,
+        step: 25,
+        change: function(event, ui) {
+          adjustLightingLevel($("#lightingSlider").slider("value"));
+        }
+      });
+      $("#lightingSlider").show();
+      $('#lightingSlider').click(function(event) {
+        event.stopPropagation();
+      });
+    }
+  }
+  
+  getClientList();
+
+  if (tmpLanStatus == 1) {
+    checkNewFw();
+  }
+
+  $('#confirmToApply').click(function(event) {
+    console.log("confirmToAct = " + confirmToAct);
+    $('#confirmApplyDig').hide();
+    $('#confirmUpgradeDig').hide();
+    $('#applyConfirm').hide();
+    if (confirmToAct == "turnOnOffWifi") {
+      var img = $('#dashWifi').css('background-image');
+      if (img.indexOf(imgOn) > -1) {
+        // Turn Off
+        turnOnOffService('wifi', 0, 15);
+      }
+      else {
+        // Turn On
+        turnOnOffService('wifi', 1, 30);
+      }
+    }
+    else if (confirmToAct == "upgradeFw") {
+      dashboardUpgradeFw();
+    }
+    else {
+      refresh();
+    }
+  });
+  $('#confirmToCancel').click(function(event) {
+    refresh();
+  });
+
+  refreshDashboard();
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="center" background="images/UI-new_10.png"><table width="95%" border="0" cellspacing="2" cellpadding="2">
+            <tr>
+              <td align="center" class="style8"><table height="225" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td id="upper_bg" width="800" height="225" colspan="5" align="center" valign="top" background="images/line1-nol.png" class="style7"><table width="100%" height="100%" border="0" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td height="5">&nbsp;</td>
+                      <td height="5" colspan="2" style="cursor: pointer;" onclick="defaultBrLanWindow();showWindow('dashboardBrLanWindow')">&nbsp;</td>
+                      <td height="5">&nbsp;</td>
+                      <td height="5" colspan="2" style="cursor: pointer;" onclick="defaultBrWindow();showWindow('dashboardBrWindow')">&nbsp;</td>
+                      <td height="5">&nbsp;</td>
+                      <td width="228" rowspan="3" valign="top"><table width="218" height="202" border="0" cellpadding="0" cellspacing="0">
+                        <tr height="98" style="cursor: pointer;" onclick="showWindow('dashboardClientWindow')">
+                          <td width="100"><img id="clientImage" src="images/icon03-b.png" width="100" height="95" /></td>
+                          <td width="118" align="left"><span><script>document.write(DashClient);</script></span>&nbsp;<span id="numOfClient"></span></td>
+                        </tr>
+                        <tr>
+                          <td height="9" colspan="2"><img src="images/line-s.png" width="200" height="5" /></td>
+                        </tr>
+                        <tr height="95" style="cursor: pointer;" onclick="showWindow('dashboardUsbWindow')">
+                          <td width="100"><img id="usbImage" src="images/icon04-nol.png" width="100" height="95" /></td>
+                          <td align="left"><script>document.write(DashUSB);</script></td>
+                        </tr>
+                      </table></td>
+                    </tr>
+                    <tr>
+                      <td width="10">&nbsp;</td>
+                      <td width="8" style="cursor: pointer;" onclick="defaultBrLanWindow();showWindow('dashboardBrLanWindow')">&nbsp;</td>
+                      <td id="lanInfo" width="260" rowspan="2" align="left" valign="top" class="style7" style="cursor: pointer;" onclick="defaultBrLanWindow();showWindow('dashboardBrLanWindow')"></td>
+                      <td width="14" rowspan="2">&nbsp;</td>
+                      <td width="8" rowspan="2" style="cursor: pointer;" onclick="defaultBrWindow();showWindow('dashboardBrWindow')">&nbsp;</td>
+                      <td width="258" rowspan="2" align="left" valign="top" class="style7" style="cursor: pointer;" onclick="defaultBrWindow();showWindow('dashboardBrWindow')">
+                        <table>
+                          <tr>
+                            <td id="apInfo">
+                            </td>
+                          </tr>
+                          <tr>
+                            <td id="newFwInfo" style="color:yellow;" width="">
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                      <td width="14" align="center">&nbsp;</td>
+                    </tr>
+                    <tr>
+                      <td>&nbsp;</td>
+                      <td style="cursor: pointer;" onclick="defaultBrLanWindow();showWindow('dashboardBrLanWindow')">&nbsp;</td>
+                      <td>&nbsp;</td>
+                    </tr>
+                  </table></td>
+                </tr>
+              </table></td>
+            </tr>
+            <tr>
+              <td align="center"><img src="images/line.png" width="800" height="5" /></td>
+            </tr>
+            <tr>
+              <td>&nbsp;</td>
+            </tr>
+            <tr>
+              <td align="center"><table width="59%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td id="dashWizard">
+                  </td>
+                  <td id="dashVpn">
+                  </td>
+                  <td id="dashParentalControl">
+                  </td>
+                  <td id="dashSmartHome">
+                  </td>
+                  <td id="dashAdvanced">
+                  </td>
+                </tr>
+                <tr>
+                  <td id="dashWan">
+                  </td>
+                  <td id="dashSelfHealing">
+                  </td>
+                  <td id="dashLighting">
+                  </td>
+                  <td id="dashGuest">
+                  </td>
+                  <td id="dashWifi">
+                  </td>
+                </tr>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+<!-- End Save for Web Slices -->
+</body>
+<script type="text/javascript">
+  writeWindow("cover");
+  writeWindow("waitWindow");
+  writeWindow("dashboardBrLanWindow");
+  writeWindow("dashboardBrWindow");
+  writeWindow("dashboardClientWindow");
+  writeWindow("dashboardUsbWindow");
+</script>
+</html>

@@ -1,0 +1,136 @@
+#!/bin/sh
+
+crondir="/etc/gizmo/cronjobs"
+
+HA_NO=`echo $1`
+perform_action=`echo $2`
+
+schedule_str=`echo $3|sed s/\'/\"/g  `
+json_str=`echo $4|sed s/\'/\"/g  `
+echo "$schedule_str"
+type=`echo "$schedule_str" | jq .type -r`
+schedule=`echo "$schedule_str" | jq .schedule -r`
+
+echo "Type : $type , Schedule : $schedule , Scene : $json_str"
+
+
+count=`ls $crondir/$HA_NO | wc -l`
+
+delete_existing_schedule(){
+
+
+	#Removing Cron Job
+	crontab -l > /tmp/mycron
+	sed -i "/cronjobs\/$HA_NO/d" /tmp/mycron
+	crontab /tmp/mycron
+	rm /tmp/mycron	
+
+	#Removing script
+	rm -rf $crondir/$HA_NO
+
+
+	#Removing scene
+        scenes_cmd=`echo {\"action\":1,\"group_id\":$HA_NO,\"scene_id\":$HA_NO}`
+        echo $scenes_cmd   
+        ubus call zstack scenes $scenes_cmd
+                           
+        #Removing Group         
+        group_cmd=`echo {\"action\":2,\"dev_addr\":\"00124B0008B15AC7\",\"group_id\":$HA_NO,\"endpoint_id\":1}`            
+        echo $group_cmd                            
+        ubus call zstack group $group_cmd
+                                                                                                                                                                           
+        echo "Scene is deleted from schedule, Deleting entry from DB"                                                            
+        sqlite3 /etc/orbweb.db "delete from ifttt where HA_NO = $HA_NO"
+
+}
+
+if [ "$perform_action" == "delete_schedule" ];then
+	delete_existing_schedule
+	exit 0
+fi
+
+if [ "$count" -gt 0 ];then
+	delete_existing_schedule	
+fi
+
+mkdir -p $crondir
+echo "#!/bin/sh" > $crondir/$HA_NO
+
+scenes_cmd=`echo {\"action\":4,\"group_id\":$HA_NO,\"scene_id\":$HA_NO}`
+echo $scenes_cmd
+echo "ubus call zstack scenes '"$scenes_cmd"'" >> $crondir/$HA_NO
+echo "/etc/gizmo/scene_triggered $HA_NO" >> $crondir/$HA_NO
+chmod 755 $crondir/*
+
+if [ "$type" == "once" ];then
+	date=`echo $schedule | jq .date -r`
+	time=`echo $schedule | jq .time -r`
+	month=`echo $date | awk '{print substr ($0, 5, 2)}'  `
+	day=`echo $date | awk '{print substr ($0, 7, 2)}'  `
+	hours=`echo $time | awk '{print substr ($0, 0, 2)}'  `
+	minutes=`echo $time | awk '{print substr ($0, 3, 2)}'  `
+	echo "Adding one time Job. Date : $date, Time : $time, Month : $month, Day : $day, Hours: $hours, Mins : $minutes"
+	
+	#Adding scene for the schedule
+	/etc/gizmo/add_rule "$HA_NO" "scene" "" "$json_str"
+
+	cjob=`echo "$minutes $hours $day $month * /etc/gizmo/cronjobs/$HA_NO >/dev/null 2>&1"`
+	# Adding cron job.:
+        crontab -l > /tmp/mycron                                                                                                         
+        echo "$cjob" >> /tmp/mycron                                                                                   
+        crontab /tmp/mycron                                                                                                              
+        rm /tmp/mycron                                                                                                                   
+
+	echo "Cron Job Added : $cjob"
+
+elif [ "$type" == "weekly" ];then
+	echo "Adding weekly Schedule."
+	total_days=`echo $schedule | jq length`
+	day_list=""
+	time=`echo $schedule | jq .[0].time -r `
+	while [ $total_days -gt 0 ];do
+		day_list="$day_list`echo $schedule|jq --arg INDEX $total_days '.[$INDEX | tonumber - 1 ].day' -r `,"
+		total_days=`expr $total_days - 1`
+	done
+	hours=`echo $time | awk '{print substr ($0, 0, 2)}'  `
+	minutes=`echo $time | awk '{print substr ($0, 3, 2)}'  `
+	cjob=`echo "$minutes $hours * * $day_list /etc/gizmo/cronjobs/$HA_NO >/dev/null 2>&1"`
+
+	/etc/gizmo/add_rule "$HA_NO" "scene" "" "$json_str"
+
+        crontab -l > /tmp/mycron                                                                                                         
+        echo "$cjob" >> /tmp/mycron                                                                                   
+        crontab /tmp/mycron                                                                                                              
+        rm /tmp/mycron                                                                                                                   
+	echo "Cron Job Added: $cjob"
+
+elif [ "$type" == "month" ];then
+	echo "Adding monthly schedule." 
+	date=`echo $schedule | jq .date -r`
+	time=`echo $schedule | jq .startTime -r`
+	hours=`echo $time | awk '{print substr ($0, 0, 2)}'  `
+	minutes=`echo $time | awk '{print substr ($0, 3, 2)}'  `
+
+
+	cjob=`echo "$minutes $hours $date * * /etc/gizmo/cronjobs/$HA_NO >/dev/null 2>&1"`
+	/etc/gizmo/add_rule "$HA_NO" "scene" "" "$json_str"
+
+        crontab -l > /tmp/mycron                                                                                                         
+        echo "$cjob" >> /tmp/mycron                                                                                   
+        crontab /tmp/mycron                                                                                                              
+        rm /tmp/mycron                                                                                                                   
+	echo "Cron Job Added: $cjob"
+elif [ "$type" == "day" ];then
+	echo "Adding daily Schedule."
+	time=`echo $schedule | jq .startTime -r`
+	hours=`echo $time | awk '{print substr ($0, 0, 2)}'  `
+	minutes=`echo $time | awk '{print substr ($0, 3, 2)}'  `
+	cjob=`echo "$minutes $hours * * * /etc/gizmo/cronjobs/$HA_NO >/dev/null 2>&1"`
+	/etc/gizmo/add_rule "$HA_NO" "scene" "" "$json_str"
+
+        crontab -l > /tmp/mycron                                                                                                         
+        echo "$cjob" >> /tmp/mycron                                                                                   
+        crontab /tmp/mycron                                                                                                              
+        rm /tmp/mycron                                                                                                                   
+	echo "Cron Job Added: $cjob"
+fi

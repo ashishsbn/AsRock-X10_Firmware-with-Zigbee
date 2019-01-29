@@ -1,0 +1,504 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="-1" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/ip_calc.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+var num_of_pri;
+
+function SwitchQoscb(swithThis)
+{
+ var uprate_name, downrate_name;
+ var QosEnabled = $('#QoSdevonoff').val();
+ var i;
+
+  console.log("switch state :" + $('#QoSdevonoff').val());
+  if(QosEnabled == "ON"){
+    $('select#nPriority').attr("disabled",false);
+	$('select#ClientList').attr("disabled",false);
+	$('input#Qosuplink').attr("disabled",false);
+	$('input#Qosdownlink').attr("disabled",false);
+	
+	for(i=1; i<=num_of_pri; i++){
+      uprate_name = "Uprate"+i;
+      downrate_name = "Downrate"+i;
+	  $('input[name='+downrate_name+']').attr("disabled",false);
+	  $('input[name='+uprate_name+']').attr("disabled",false);
+    }
+  }else{
+    $('select#nPriority').attr("disabled",true);
+	$('select#ClientList').attr("disabled",true);
+	$('input#Qosuplink').attr("disabled",true);
+	$('input#Qosdownlink').attr("disabled",true);
+	for(i=1; i<=num_of_pri; i++){
+      uprate_name = "Uprate"+i;
+      downrate_name = "Downrate"+i;
+	  $('input[name='+downrate_name+']').attr("disabled",true);
+	  $('input[name='+uprate_name+']').attr("disabled",true);
+    }
+  }
+  
+  
+}
+
+function addClientList(){
+  var getIpValue = $('select#ClientList :selected').text();
+
+  var table= document.getElementById("ClientPrioirtyList");
+  var rows =  table.getElementsByTagName('tr');
+  var tablelen = rows.length;
+  var  i, j, cells, getIpValue;
+  var stripaddr
+  
+  stripaddr = getIpValue.split("(");
+
+  for (i = 2, j = rows.length; i < j; ++i) {
+    cells = rows[i].getElementsByTagName('td');
+    if (!cells.length){ 
+        continue;
+	}
+    getIpValue = cells[1].innerHTML;
+    
+    if(stripaddr[0] == getIpValue)
+      return false;
+  }
+  
+  console.log("getIpValue = "+getIpValue+" stripaddr = "+stripaddr[0]);
+  
+  return true;
+  
+}
+
+//function addprioritylist(id,pri,uprate,downrate,nItem){
+function addprioritylist(id,uprate,downrate,nItem){
+  var body, bodyUppri, bodyuprate,bodyDownpri,bodyDownrate;
+  var uprate_name = "Uprate"+nItem;
+  var downrate_name = "Downrate"+nItem;
+  var QosEnabled = $('#QoSdevonoff').val();
+/*	
+  bodyUppri = {"align" : "center", "bgcolor" : "#333333", "align" : "center","value" : pri};
+  bodyuprate = {"align" : "center", "bgcolor" : "#333333", "isInput":"1" ,"align" : "center","name":uprate_name};
+  bodyDownpri = {"align" : "center", "bgcolor" : "#333333", "align" : "center","value" : pri};
+  bodyDownrate = {"align" : "center", "bgcolor" : "#333333","isInput":"1","align" : "center","name":downrate_name};
+ */ 
+  bodyUppri = {"align" : "center", "bgcolor" : "#333333", "align" : "center","value" : nItem};
+  bodyuprate = {"align" : "center", "bgcolor" : "#333333", "isInput":"1" ,"align" : "center","name":uprate_name};
+  bodyDownpri = {"align" : "center", "bgcolor" : "#333333", "align" : "center","value" : nItem};
+  bodyDownrate = {"align" : "center", "bgcolor" : "#333333","isInput":"1","align" : "center","name":downrate_name};
+ 
+  body = [bodyUppri, bodyuprate,bodyDownpri,bodyDownrate];
+  $('#' + id + 'TableBody').append(newTableBody(body));
+  
+  $('input[name='+uprate_name+']').val(uprate);
+  $('input[name='+downrate_name+']').val(downrate);
+  
+  if(QosEnabled == "OFF"){
+    $('input[name='+uprate_name+']').attr("disabled",true);
+	$('input[name='+downrate_name+']').attr("disabled",true);
+  }
+}
+
+function getQosClientList(id,n,item){
+	
+	var strIndex = n.toString();
+	
+	console.log("Listitem : "+item+" Index : "+strIndex);
+	$('select#'+ id).append("<option value=\""+strIndex+"\">"+item+"</option>");
+}
+
+function skipChar(str , index){
+  if(index == str.length)
+    return str.substr(0,index);
+  else
+    return str.substr(0,index) + str.substr(index+1);
+}
+
+function setData(url) {
+  var argu;
+  var Clienttable = document.getElementById("ClientPrioirtyList");
+  var Clientrows =  Clienttable.getElementsByTagName('tr');
+  var Clienttablelen = Clientrows.length;
+  var  i, j, cells,nCount;
+  var gClientValue="&ClientList";
+  var uprate_name, downrate_name;
+  var ClientIp;
+  var ClientPri;
+  
+  var QosEnabled = $('#QoSdevonoff').val();
+  
+  if(QosEnabled == "ON")
+    argu = "&Qosenabled=1";
+  else  
+    argu = "&Qosenabled=0";
+  
+  var atf = $('#atf').val();
+  if(atf == "ON")
+    argu += "&atf=1";
+  else
+    argu += "&atf=0";
+
+  argu += "&UpSpeed="+$("input#Qosuplink").val();
+  argu += "&DownSpeed="+$('input#Qosdownlink').val();
+   
+  for(i=1; i<=num_of_pri; i++){
+    uprate_name = "Uprate"+i;
+    downrate_name = "Downrate"+i;
+	argu += "&"+uprate_name+"="+$('input[name='+uprate_name+']').val();
+    argu += "&"+downrate_name+"="+$('input[name='+downrate_name+']').val();
+  }
+  nCount = 0;
+  for (row = 2, j = Clientrows.length; row < j; ++row) {
+    cells = Clientrows[row].getElementsByTagName('td');
+    if (!cells.length) {
+        continue;
+    }
+	ClientIp = cells[1].innerHTML;
+	for(i=0;i<ClientIp.length;i++)
+	{
+//	  console.log("Client IP : " + ClientIp.charAt(i));
+	  if((ClientIp.charAt(i) != '.') && ((ClientIp.charAt(i) <'0')||(ClientIp.charAt(i)>'9'))){
+	      ClientIp = skipChar(ClientIp,i);
+	  }
+	}
+	ClientPri = cells[0].innerHTML;
+	for(i=0;i<ClientPri.length;i++)
+	{
+	  if((ClientPri.charAt(i) <'0')||(ClientPri.charAt(i)>'9'))
+	    ClientPri = skipChar(ClientPri,i);
+	}
+    gClientValue+="#"+ClientPri+"#"+ClientIp;
+	nCount++;
+	//console.log("Client list = "+cells[0].innerHTML+":"+cells[1].innerHTML);
+  }
+  argu += "&numClient="+nCount;
+  argu += "&Listlen="+gClientValue.length;
+  argu += gClientValue;
+  console.log("argu= "+argu);
+  
+  $.ajax({
+    url: url,
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log(result);
+    },
+    error : function() {
+      console.log("post " + url + " error");
+    }
+  });
+  
+  return true;
+}
+
+function addClassfyTable(id,strPri,strIpaddr){
+
+   var body, bodyIp, bodyDelete,bodyPri;
+	
+   if ((($('#' + id + 'TableBody').children().length) % 2) == 0) {
+        bodyPri = {"align" : "center", "bgcolor" : "#333333", "value" : strPri};
+        bodyIp = {"align" : "center", "bgcolor" : "#333333", "value" : strIpaddr};
+        bodyDelete = {"classes" : id + "Del", "bgcolor" : "#333333", "isImage" : "1", "imgSrc" : "images/icon-.png"};
+      }
+      else {
+	    bodyPri = {"align" : "center", "value" : strPri};
+        bodyIp = {"align" : "center", "value" : strIpaddr};
+        bodyDelete = {"classes" : id + "Del", "isImage" : "1", "imgSrc" : "images/icon-.png"};
+      }
+      body = [bodyPri,bodyIp, bodyDelete];
+      $('#' + id + 'TableBody').append(newTableBody(body));
+}
+
+$(document).ready(function(){
+
+  console.log("document ready!!!");
+  isLoggedIn();
+
+  $('#qosMenu').removeClass('menu');
+  $('#qosMenu').addClass('mainmenu');
+
+  emptyElementArrays();
+ 
+  switchOnOff(QoSdevEnable, "QoSdevonoff", SwitchQoscb);
+  switchOnOff(QosWifiAtf, "atf");
+  text(QoSUplink, "Qosuplink","Mbps");
+  $('input#Qosuplink').attr('size', 20);
+  $('input#Qosuplink').attr('maxlength', 4);
+   text(QoSDownlink, "Qosdownlink","Mbps");
+   $('input#Qosdownlink').attr('size', 20);
+   $('input#Qosdownlink').attr('maxlength', 4);
+   label(QosBandwidthlimit,"Bandwidthlimit");
+   label(QosClientlist,"Clientlist");
+   bandwidth_id = "ManuallyBandwidthList";
+   
+   head = [{"desc" : QosUplinkBandwidth, "width" : "50%", "colspan" : "2", "align" : "center"},
+		   {"desc" : QosDownlinkBandwidth, "width" : "50%", "colspan" : "2", "align" : "center"}];
+   body = [{"bgcolor" : "#333333", "value" : QoSPriority, "maxSize" : "10","align" : "center","name" : "UpPrioirty"},
+           {"bgcolor" : "#333333", "value" : "%", "maxSize" : "10", "align" : "center","name" : "Uprate"},
+           {"bgcolor" : "#333333", "value" : QoSPriority, "maxSize" : "10", "align" : "center","name" : "DownPrioirty"},
+           {"bgcolor" : "#333333", "value" : "%", "maxSize" : "10", "align" : "center" ,"name" : "Downrate"}];
+   
+    tableList(bandwidth_id, head, body);
+   
+    Client_id = "ClientPrioirtyList";
+	
+	
+    head  = [{"desc" : QoSPriority, "width" : "20%", "align" : "center"},
+		     {"desc" : QosClient, "width" : "50%", "align" : "center"},
+		     {"desc" : ParAddDelete, "width" : "20%", "align" : "center"}];
+    body = [{"id" : "nPriority","bgcolor" : "#333333", "isSelect" : "1"}, 
+           {"id" : "ClientList","bgcolor" : "#333333", "isSelect" : "1"},
+		   {"id" : Client_id + "Add", "bgcolor" : "#333333", "isImage" : "1", "imgSrc" : "images/icon+.png"}];
+   
+    tableList(Client_id, head, body);
+	
+	$('#' + Client_id + 'Add').click(function() {
+    var id, ClientIpAddr;
+
+	var getClientData,getPriData;
+	var QosEnabled = $('#QoSdevonoff').val();
+  
+    if(QosEnabled == "OFF")
+	   return ;
+	
+    id = "ClientPrioirtyList";
+    getClientData = $('select#ClientList :selected').text();
+	getPriData = $('select#nPriority :selected').text();
+	ClientIpAddr = getClientData.split("(");
+    if (addClientList() == true) {
+      var body, bodyClientPri,bodyClientIp, bodyDelete;
+	//  $('select#AccessBlock').val("");
+      if ((($('#' + id + 'TableBody').children().length) % 2) == 0) {
+	    bodyClientPri = {"align" : "center", "bgcolor" : "#333333", "value" : getPriData};
+        bodyClientIp = {"align" : "center", "bgcolor" : "#333333", "value" : ClientIpAddr[0]};
+        bodyDelete = {"classes" : id + "Del", "bgcolor" : "#333333", "isImage" : "1", "imgSrc" : "images/icon-.png"};
+      }
+      else {
+	    bodyClientPri = {"align" : "center", "bgcolor" : "#333333", "value" : getPriData};
+        bodyClientIp = {"align" : "center", "value" : ClientIpAddr[0]};
+        bodyDelete = {"classes" : id + "Del", "isImage" : "1", "imgSrc" : "images/icon-.png"};
+      }
+      body = [bodyClientPri,bodyClientIp, bodyDelete];
+      $('#' + id + 'TableBody').append(newTableBody(body));
+    }
+  });
+  
+  $('#' + Client_id + 'TableBody').on("click", '.' + Client_id + 'Del', function() {
+    var QosEnabled = $('#QoSdevonoff').val();
+  
+    if(QosEnabled == "OFF")
+	   return ;
+    $(this).closest('tr').remove();
+  });
+   
+    var qos_info = getData("/f/getAdvqos");
+    if(qos_info!= null){
+	  var i;
+	  var strIndex;
+	  var num_of_classify=parseInt(qos_info.classify[0].num);
+	  var num_of_client=parseInt(qos_info.client[0].num);
+	  num_of_pri=parseInt(qos_info.priority[0].num);
+	  
+	  console.log("QosEnable: "+qos_info.info.QosEnable+"UpSpeed : "+qos_info.info.UpSpeed+"DownSpeed : "+qos_info.info.DownSpeed);
+	  
+	  if(qos_info.info.QosEnable == "0"){
+	    $('#QoSdevonoff').val("OFF");
+		$('select#nPriority').attr("disabled",true);
+		$('select#ClientList').attr("disabled",true);
+		$('input#Qosuplink').attr("disabled",true);
+	    $('input#Qosdownlink').attr("disabled",true);
+	  }else if(qos_info.info.QosEnable == "1"){
+	    $('#QoSdevonoff').val("ON");
+		$('span#QoSdevonoff').trigger("click");
+	  }
+      if(qos_info.info.atf == "0"){
+        $('#atf').val("OFF");
+      }else if(qos_info.info.atf == "1"){
+        $('#atf').val("ON");
+        $('span#atf').trigger("click");
+      }
+	  $('input#Qosuplink').val(qos_info.info.UpSpeed);
+	  $('input#Qosdownlink').val(qos_info.info.DownSpeed);
+	  console.log("priority num :"+parseInt(qos_info.priority[0].num));
+	  console.log("client num :"+parseInt(qos_info.client[0].num));
+	  
+	  for(i=1; i<=num_of_pri; i++) {
+	//	addprioritylist(bandwidth_id,qos_info.priority[i].UpPriority,qos_info.priority[i].UpRate,qos_info.priority[i].DownRate,i);
+	    addprioritylist(bandwidth_id,qos_info.priority[i].UpRate,qos_info.priority[i].DownRate,i);
+      }
+	  for(i=1;i<=num_of_classify;i++){
+	    var classifyPri = parseInt(qos_info.classify[i].Priority);
+		console.log("classify Priority : "+classifyPri);
+	    addClassfyTable(Client_id,classifyPri.toString(),qos_info.classify[i].ipAddr); 
+	  }
+	   
+	  for(i=1;i<=num_of_client ; i++){
+	    var stritem = qos_info.client[i].ipAddr+"("+qos_info.client[i].name+"@"+qos_info.client[i].macAddr+")";
+	    getQosClientList("ClientList",i,stritem);
+	  }
+          for(i=1; i<=num_of_pri; i++){
+            strIndex = i.toString(); 
+            console.log("Listitem : "+strIndex+" Index : "+strIndex);
+            $('select#nPriority').append("<option value=\""+strIndex+"\">"+strIndex+"</option>");
+          }  
+	}
+	
+  
+  $("#Apply").click(function(event) {
+   
+	var UplinkSum=0;
+	var DownlinkSum=0;
+	var i,uprate_name,downrate_name;
+  
+    if((!isAllNum($("input#Qosuplink").val()))||(parseInt($("input#Qosuplink").val())>1000) || (parseInt($("input#Qosuplink").val())<1))
+	{
+	  alert(QosWarn2);
+	  return ;
+	}
+	if((!isAllNum($("input#Qosdownlink").val()))||(parseInt($("input#Qosdownlink").val())>1000) || (parseInt($("input#Qosdownlink").val())<1))
+	{
+	  alert(QosWarn2);
+	  return ;
+	}
+	  
+	for(i=1; i<=num_of_pri; i++){
+      uprate_name = "Uprate"+i;
+      downrate_name = "Downrate"+i;
+	  if((!isAllNum($('input[name='+downrate_name+']').val())) || (parseInt($('input[name='+downrate_name+']').val())<1))
+	  {
+	    alert(QosWarn3);
+		return;
+	  }
+	  
+	  if((!isAllNum($('input[name='+uprate_name+']').val())) || (parseInt($('input[name='+uprate_name+']').val())<1))
+	  {
+	    alert(QosWarn3);
+		return;
+	  }
+	  
+	  UplinkSum += parseInt($('input[name='+uprate_name+']').val());
+      DownlinkSum += parseInt($('input[name='+downrate_name+']').val());
+    }
+	  console.log("Uplink Sun : "+UplinkSum + " Downlink Sun : "+DownlinkSum);
+	  
+	  if((UplinkSum > 100) || (DownlinkSum > 100)){
+	    alert(QosWarn1);
+		return;
+	  }
+    if (setData("/f/setAdvqos")) {
+      //For wireless re-init
+      waitTimeout=30;
+      showWindow("waitWindow");
+      countdownWindow("waitingDig");
+    }
+  });
+  $("#Cancel").click(function(event) {
+    console.log("cancel click...");
+    refresh();
+  });
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" align="center" valign="top">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                <script type="text/javascript">writeLeftMenu();</script> 
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top"><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td colspan="2" align="left"><h4><script>document.write(AdvQoS);</script></h4></td>
+                </tr>
+                <tr>
+                  <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                </tr>
+                <tr id="QoSdevonoff">
+                </tr>
+                <tr id="atf">
+                </tr>
+                <tr><td>&nbsp;</td></tr>
+                <tr><td>&nbsp;</td></tr>
+				<tr>
+				   <td colspan="2" align="left"><h4><script>document.write(Wireless2GBW);</script></h4></td>
+                </tr>
+                <tr>
+				   <td colspan="2" align="left" class="style6"><b><span><script>document.write(GeneralNote);</script></span></b><font color="#FFCC00" style="font-weight:bold">&nbsp;<span><script>document.write(StartQoSInfo3);</script></span></font>
+                  </td>
+				</tr>
+				<tr>
+                  <td width="30%" align="left" class="style6"><script>document.write(StartQoSBWST);</script></td>
+                  <td width="70%" align="left">
+                    <input id="SpeedTestBut" type="button" value="" onclick="window.open('http://www.speedtest.net')" />
+                    <script>$("#SpeedTestBut").val(StartQoSSpeedTest);</script>
+                  </td>
+                </tr>
+				<tr id="Qosuplink">
+				</tr>
+				<tr id="Qosdownlink">
+				</tr>
+                <tr id="Bandwidthlimit">
+                </tr>
+				<tr>
+                  <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                </tr>
+				<tr id="ManuallyBandwidthList">
+                </tr>
+                <tr><td>&nbsp;</td></tr>
+                <tr><td>&nbsp;</td></tr>
+				<tr>
+				   <td colspan="2" align="left"><h4><script>document.write(QoSPriority);</script></h4></td>
+                </tr>
+                <tr id="Clientlist">
+                </tr>
+				<tr>
+                  <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                </tr>
+				<tr id="ClientPrioirtyList">
+                </tr>
+                <script type="text/javascript">writeApplyCancel();</script>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+</div>
+<!-- End Save for Web Slices -->
+<script type="text/javascript">
+  writeWindow("cover");
+  writeWindow("waitWindow");
+</script>
+</body>
+</html>

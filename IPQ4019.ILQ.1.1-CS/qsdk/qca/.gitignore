@@ -1,0 +1,9 @@
+.built-in.o.cmd
+built-in.o
+modules.builtin
+modules.order
+.o.cmd
+.*.cmd
+*.ko
+*.mod.c
+src/linux

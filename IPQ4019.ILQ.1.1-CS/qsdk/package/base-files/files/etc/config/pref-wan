@@ -1,0 +1,47 @@
+config global global
+	option proto_v4	dhcp
+
+config interface dhcp
+	option ifname	wan-dhcp
+	option mtu	1500
+	option ip_checked	1
+	option dns_checked	1
+
+config interface static
+	option ifname	wan-static
+	option mtu	1500
+	option ip_checked	0
+	option dns_checked	0
+
+config interface pppoe
+	option ifname	wan-pppoe
+	option mtu	1488
+	option ip_checked	1
+	option dns_checked	1
+
+config interface pptp
+	option ifname	wan-pptp
+	option mtu	1400
+	option ip_checked	1
+	option dns_checked	1
+
+config interface l2tp
+	option ifname	wan-l2tp
+	option mtu	1400
+	option ip_checked	1
+	option dns_checked	1
+
+config interface dhcpv6
+	option ifname	wan6-dhcpv6
+	option dns_checked	1
+
+config interface static6
+	option ifname	wan6-static6
+	option dns_checked	0
+
+config interface 6to4
+	option ifname	wan6-6to4
+	option dns_checked	0
+	option ipv4_relay_auto 1
+	option ipv4_relay 192.88.99.1
+

@@ -1,0 +1,27 @@
+--- a/genconfig.sh
++++ b/genconfig.sh
+@@ -70,6 +70,12 @@ if [ -f ../shared/tomato_version ]; then
+ 	OS_VERSION="Tomato $(cat ../shared/tomato_version)"
+ fi
+ 
++# ASRock special case
++if [ -f ./os.asrock ]; then
++	OS_NAME=ASRock
++	OS_VERSION=$(cat ./os.asrock)
++fi
++
+ ${RM} ${CONFIGFILE}
+ 
+ echo "/* MiniUPnP Project" >> ${CONFIGFILE}
+@@ -266,6 +272,11 @@ case $OS_NAME in
+ 		FW=ipfw
+ 		OS_URL=http://developer.apple.com/macosx
+ 		;;
++	ASRock)
++		OS_URL=http://www.asrock.com/
++		echo "#define USE_IFACEWATCHER 1" >> ${CONFIGFILE}
++		FW=netfilter
++		;;
+ 	*)
+ 		echo "Unknown OS : $OS_NAME"
+ 		echo "Please contact the author at http://miniupnp.free.fr/ or http://miniupnp.tuxfamily.org/."

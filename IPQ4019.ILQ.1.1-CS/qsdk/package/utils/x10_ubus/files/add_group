@@ -1,0 +1,68 @@
+#!/bin/sh
+
+GROUP_ID=`echo $1`
+json_str=`echo $2|sed s/\'/\"/g  `
+perform_action=`echo $3`
+exec_length=`echo $json_str | jq length`
+
+is_rule_exist=`sqlite3 /etc/orbweb.db "select GROUP_ID from GROUPS where GROUP_ID = $GROUP_ID"`
+
+echo "Action: $perform_action , Group: $GROUP_ID, Device List: $json_stri , IsRuleExist : $is_rule_exist"
+
+delete_this_group(){
+                                                                                                               
+        #Removing Group                                                                                        
+        sqlite3 /etc/orbweb.db "delete from GROUPS where GROUP_ID = $GROUP_ID"  
+	echo "Group $GROUP_ID is deleted"    
+}
+
+if [ "$exec_length" == "" ]
+then
+	echo "Device list Length is 0"
+	delete_this_group
+	#delete Groups from all existing scenes;
+        data=`sqlite3 /etc/orbweb.db "select * from ifttt;" | grep -r :\"$GROUP_ID\"`
+        echo "$data" | while IFS='' read -r line || [[ -n "$line" ]]; do        
+                HA_NO=`echo "$line" | awk '{split($0,a,"|"); print a[1]}'`                                
+                device_id=`echo "$line" | awk '{split($0,a,"|"); print a[2]}'`    
+                action=`echo "$line" | awk '{split($0,a,"|"); print a[2]"="a[3]}'`                
+                json_str=`echo "$line" | awk '{split($0,a,"|"); print a[5]}'`
+                echo "$HA_NO, $device_id, $action, $json_str"             
+		json_str=`echo $json_str | jq --arg INDEX $GROUP_ID 'del( .[] | select(.group_id == $INDEX) )' -c`
+                if [ "$device_id" == "" ];then                             
+                        /etc/gizmo/add_rule "$HA_NO" "scene" "" "$json_str"
+                else                                                              
+                        /etc/gizmo/add_rule "$HA_NO" "scene" "$action" "$json_str"
+                fi                                                        
+        done                                                              
+
+        exit 1                                                           
+fi
+
+if [ ! -z "$is_rule_exist" ]
+then
+	echo "Group $GROUP_ID already exist in DB, first deleting it."
+	delete_this_group
+
+	echo "Adding group in DB."
+	sqlite3 /etc/orbweb.db "insert into GROUPS (GROUP_ID, DEVICE_LIST) values ($GROUP_ID,'$json_str')" 
+	#update scenes with the same group again.	
+
+	data=`sqlite3 /etc/orbweb.db "select * from ifttt;" | grep -r :\"$GROUP_ID\"`
+	echo "$data" | while IFS='' read -r line || [[ -n "$line" ]]; do
+	        HA_NO=`echo "$line" | awk '{split($0,a,"|"); print a[1]}'`
+	        device_id=`echo "$line" | awk '{split($0,a,"|"); print a[2]}'`
+	        action=`echo "$line" | awk '{split($0,a,"|"); print a[2]"="a[3]}'`
+        	json_str=`echo "$line" | awk '{split($0,a,"|"); print a[5]}'`
+	        echo "$HA_NO, $device_id, $action, $json_str"
+	        if [ "$device_id" == "" ];then
+	                /etc/gizmo/add_rule "$HA_NO" "scene" "" "$json_str"
+	        else
+	                /etc/gizmo/add_rule "$HA_NO" "scene" "$action" "$json_str"
+	        fi
+	done
+else
+	echo "Addin new Group"
+	sqlite3 /etc/orbweb.db "insert into GROUPS (GROUP_ID, DEVICE_LIST) values ($GROUP_ID,'$json_str')" 
+fi
+

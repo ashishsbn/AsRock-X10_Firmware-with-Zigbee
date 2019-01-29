@@ -1,0 +1,66 @@
+diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
+index 5abe5ed..453154d 100644
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -2030,7 +2030,7 @@ hostapd_iface_alloc(struct hapd_interfaces *interfaces)
+ 
+ static struct hostapd_config *
+ hostapd_config_alloc(struct hapd_interfaces *interfaces, const char *ifname,
+-		     const char *ctrl_iface)
++		     const char *ctrl_iface, const char *driver)
+ {
+ 	struct hostapd_bss_config *bss;
+ 	struct hostapd_config *conf;
+@@ -2043,15 +2043,30 @@ hostapd_config_alloc(struct hapd_interfaces *interfaces, const char *ifname,
+ 		return NULL;
+ 	}
+ 
+-	conf->driver = wpa_drivers[0];
+-	if (conf->driver == NULL) {
++    conf->driver = wpa_drivers[0];
++    if (conf->driver == NULL) {
+ 		wpa_printf(MSG_ERROR, "No driver wrappers registered!");
+ 		hostapd_config_free(conf);
+ 		return NULL;
+ 	}
+ 
+-	bss = conf->last_bss = conf->bss[0];
++    if(driver) {
++        int j;
++        for (j = 0; wpa_drivers[j]; j++) {
++            if (os_strcmp(driver, wpa_drivers[j]->name) == 0) {
++                conf->driver = wpa_drivers[j];
++                break;
++            }
++        }
++
++        if (!wpa_drivers[j]) {
++            wpa_printf(MSG_ERROR,
++                    "Invalid/unknown driver '%s'\t"
++                    "Registering Default driver", driver);
++        }
++    }
+ 
++	bss = conf->last_bss = conf->bss[0];
+ 	os_strlcpy(bss->iface, ifname, sizeof(bss->iface));
+ 	bss->ctrl_interface = os_strdup(ctrl_iface);
+ 	if (bss->ctrl_interface == NULL) {
+@@ -2210,8 +2225,13 @@ int hostapd_add_iface(struct hapd_interfaces *interfaces, char *buf)
+ 		if (conf && conf->bss)
+ 			os_strlcpy(conf->bss[0]->iface, buf,
+ 				   sizeof(conf->bss[0]->iface));
+-	} else
+-		conf = hostapd_config_alloc(interfaces, buf, ptr);
++	} else {
++        char *driver = os_strchr(ptr, ' ');
++        if (driver)
++            *driver++ = '\0';
++		conf = hostapd_config_alloc(interfaces, buf, ptr, driver);
++    }
++
+ 	if (conf == NULL || conf->bss == NULL) {
+ 		wpa_printf(MSG_ERROR, "%s: Failed to allocate memory "
+ 			   "for configuration", __func__);
+-- 
+1.8.2.1
+

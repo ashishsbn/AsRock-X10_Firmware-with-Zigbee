@@ -1,0 +1,2 @@
+fs.c:86:1:fs_open	8	static
+fs.c:120:1:fs_init	0	static

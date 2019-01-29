@@ -1,0 +1,12 @@
+#!/bin/sh
+
+. "/usr/share/libubox/jshn.sh"
+
+area=1
+zone=4
+echo -e -n "Content-Type:application/json\r\n\r\n"
+json_init
+json_add_string 'result' 1
+json_add_string 'message' 'Device added successfully with area '$area' and zone '$zone
+json_dump
+rm -rf /etc/gizmo/action/learn_mode_list

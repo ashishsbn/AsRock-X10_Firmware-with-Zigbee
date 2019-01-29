@@ -1,0 +1,74 @@
+#!/bin/sh
+#
+# old software does not support config_ver
+# v1.42 config_ver=1
+# v1.44 config_ver=2
+#
+
+. /usr/share/libubox/jshn.sh
+. /lib/config/uci.sh
+
+config_ver=$(uci_get system @system[0] config_ver 0)
+newest_ver=2
+
+if [ $config_ver == 0 ]; then
+	uci_set system @system[0] config_ver 1
+	uci_commit system
+fi
+
+config_ver=$(uci_get system @system[0] config_ver 0)
+
+if [ $config_ver == $newest_ver ]; then
+	echo "UCI config_ver = $config_ver is newest !!!!!"  > /dev/console
+	exit 0
+fi
+
+if [ $config_ver -le 1 ]; then
+	# Get current mode
+	op_mode=$(uci_get system @system[0] op_mode 0)
+
+	# Update AP mode's WPS PIN Code
+	if [ "$op_mode" == "2" ] ; then
+		WPS_PIN=$(boardcfg -d | grep WPS_PIN | cut -f 2 -d= | tr -d '\n')
+		uci_set wireless ath0 wps_pin $WPS_PIN
+		uci_set wireless ath1 wps_pin $WPS_PIN
+		uci_commit wireless
+	fi
+
+	# Add wireless schedule on Repeater mode
+	if [ "$op_mode" == "1" ] ; then
+		enabled=$(uci_get schedule wifi5Gonoff enable 2)
+		if [ $enabled == 2 ]; then
+			uci set schedule.wifi5Gonoff=schedule
+			uci_set schedule wifi5Gonoff type trigger
+			uci_set schedule wifi5Gonoff enable 0
+			uci_set schedule wifi5Gonoff count 2
+			uci_set schedule wifi5Gonoff c0 "ifconfig ath1 down"
+			uci_set schedule wifi5Gonoff c1 "ifconfig ath1 up"
+			uci_set schedule wifi5Gonoff schSun "111111111111111111111111"
+			uci_set schedule wifi5Gonoff schMon "111111111111111111111111"
+			uci_set schedule wifi5Gonoff schTue "111111111111111111111111"
+			uci_set schedule wifi5Gonoff schWed "111111111111111111111111"
+			uci_set schedule wifi5Gonoff schThu "111111111111111111111111"
+			uci_set schedule wifi5Gonoff schFri "111111111111111111111111"
+			uci_set schedule wifi5Gonoff schSat "111111111111111111111111"
+			uci set schedule.wifi24Gonoff=schedule
+			uci_set schedule wifi24Gonoff type trigger
+			uci_set schedule wifi24Gonoff enable 0
+			uci_set schedule wifi24Gonoff count 2
+			uci_set schedule wifi24Gonoff c0 "ifconfig ath0 down"
+			uci_set schedule wifi24Gonoff c1 "ifconfig ath0 up"
+			uci_set schedule wifi24Gonoff schSun "111111111111111111111111"
+			uci_set schedule wifi24Gonoff schMon "111111111111111111111111"
+			uci_set schedule wifi24Gonoff schTue "111111111111111111111111"
+			uci_set schedule wifi24Gonoff schWed "111111111111111111111111"
+			uci_set schedule wifi24Gonoff schThu "111111111111111111111111"
+			uci_set schedule wifi24Gonoff schFri "111111111111111111111111"
+			uci_set schedule wifi24Gonoff schSat "111111111111111111111111"
+			uci_commit schedule
+		fi
+	fi
+fi
+
+uci_set system @system[0] config_ver $newest_ver
+uci_commit system

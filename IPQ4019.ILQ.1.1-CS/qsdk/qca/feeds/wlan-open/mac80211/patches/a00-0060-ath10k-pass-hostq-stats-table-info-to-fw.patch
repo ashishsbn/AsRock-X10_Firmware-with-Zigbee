@@ -1,0 +1,105 @@
+--- a/drivers/net/wireless/ath/ath10k/htt_rx.c
++++ b/drivers/net/wireless/ath/ath10k/htt_rx.c
+@@ -798,10 +798,10 @@ ath10k_htt_rx_h_peer_channel(struct ath1
+ 		return NULL;
+ 
+ 	arvif = ath10k_get_arvif(ar, peer->vdev_id);
+-	if (WARN_ON_ONCE(!arvif))
++	if (!arvif)
+ 		return NULL;
+ 
+-	if (WARN_ON(ath10k_mac_vif_chan(arvif->vif, &def)))
++	if (ath10k_mac_vif_chan(arvif->vif, &def))
+ 		return NULL;
+ 
+ 	return def.chan;
+--- a/drivers/net/wireless/ath/ath10k/wmi-ops.h
++++ b/drivers/net/wireless/ath/ath10k/wmi-ops.h
+@@ -205,6 +205,8 @@ struct wmi_ops {
+ 				const struct wmi_peer_sant_set_train_arg *arg);
+ 	struct sk_buff *(*gen_ext_resource_config)(struct ath10k *ar,
+ 						   enum wmi_host_platform_type type);
++	struct sk_buff *(*gen_set_fwtest_param)(struct ath10k *ar,
++						u32 id, u32 value);
+ };
+ 
+ int ath10k_wmi_cmd_send(struct ath10k *ar, struct sk_buff *skb, u32 cmd_id);
+@@ -1468,5 +1470,20 @@ ath10k_wmi_ext_resource_config(struct at
+ 	return ath10k_wmi_cmd_send(ar, skb,
+ 				   ar->wmi.cmd->ext_resource_cfg_cmdid);
+ }
++static inline int
++ath10k_wmi_set_fwtest_param(struct ath10k *ar, u32 id, u32 value)
++{
++	struct sk_buff *skb;
++
++	if (!ar->wmi.ops->gen_set_fwtest_param)
++		return -EOPNOTSUPP;
++
++	skb = ar->wmi.ops->gen_set_fwtest_param(ar, id, value);
+ 
++	if (IS_ERR(skb))
++		return PTR_ERR(skb);
++
++	return ath10k_wmi_cmd_send(ar, skb,
++				   ar->wmi.cmd->fwtest_cmdid);
++}
+ #endif
+--- a/drivers/net/wireless/ath/ath10k/wmi.c
++++ b/drivers/net/wireless/ath/ath10k/wmi.c
+@@ -4765,6 +4765,7 @@ int ath10k_wmi_event_ready(struct ath10k
+ 		   __le32_to_cpu(arg.status));
+ 
+ 	ether_addr_copy(ar->mac_addr, arg.mac_addr);
++
+ 	complete(&ar->wmi.unified_ready);
+ 	return 0;
+ }
+@@ -7709,6 +7710,25 @@ ath10k_wmi_10_4_op_gen_ext_resource_conf
+ 	return skb;
+ }
+ 
++static struct sk_buff *
++ath10k_wmi_10_4_gen_set_fwtest_param(struct ath10k *ar, u32 id, u32 value)
++{
++	struct wmi_fwtest_set_param_cmd *cmd;
++	struct sk_buff *skb;
++
++	skb = ath10k_wmi_alloc_skb(ar, sizeof(*cmd));
++	if (!skb)
++		return ERR_PTR(-ENOMEM);
++
++	cmd = (struct wmi_fwtest_set_param_cmd *)skb->data;
++	cmd->id = __cpu_to_le32(id);
++	cmd->value = __cpu_to_le32(value);
++
++	ath10k_dbg(ar, ATH10K_DBG_WMI,
++		   "set fwtest param id:%d value:%d\n", id, value);
++	return skb;
++}
++
+ static const struct wmi_ops wmi_ops = {
+ 	.rx = ath10k_wmi_op_rx,
+ 	.map_svc = wmi_main_svc_map,
+@@ -8059,6 +8079,7 @@ static const struct wmi_ops wmi_10_4_ops
+ 	.gen_addba_set_resp = ath10k_wmi_op_gen_addba_set_resp,
+ 	.gen_delba_send = ath10k_wmi_op_gen_delba_send,
+ 	.fw_stats_fill = ath10k_wmi_10_4_op_fw_stats_fill,
++	.gen_set_fwtest_param = ath10k_wmi_10_4_gen_set_fwtest_param,
+ 
+ 	/* shared with 10.2 */
+ 	.gen_request_stats = ath10k_wmi_op_gen_request_stats,
+--- a/drivers/net/wireless/ath/ath10k/wmi.h
++++ b/drivers/net/wireless/ath/ath10k/wmi.h
+@@ -6474,6 +6474,11 @@ struct wmi_ext_resource_config {
+ 	__le32 host_platform_config;
+ } __packed;
+ 
++struct wmi_fwtest_set_param_cmd {
++	__le32 id;
++	__le32 value;
++} __packed;
++
+ struct ath10k;
+ struct ath10k_vif;
+ struct ath10k_fw_stats_pdev;

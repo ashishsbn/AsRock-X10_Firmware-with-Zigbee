@@ -1,0 +1,518 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/wizard-rp.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+var siteSurveyInfo = {};
+var brSettings = {};
+
+function setlanSettings()
+{
+  brSettings.lanType = $('input[id=lanType]:checked').val();
+  $('#lanSettings').hide();
+
+  if (brSettings.lanType == "dhcp") {
+    goToScanWirelessAp();
+  }
+  else {
+    $('#lanStaticSettings').show();
+  }
+}
+
+function getSecurity(auth)
+{
+  switch(parseInt(auth)) {
+    case 1:
+      return "WPA2-AES";
+    case 2:
+      return "WPA Mixed-TKIP+AES";
+    case 0:
+    default:
+      return "OPEN";
+  }
+}
+
+function getBand(channel)
+{
+  if (parseInt(channel) <= 14) {
+    return Dash24G;
+  }
+  else {
+    return Dash5G;
+  }
+}
+
+function getSignalImg(signal)
+{
+  return Math.floor(parseInt(signal)/25 + 1);
+}
+
+function showApInputInfo(index)
+{
+  for (i = 1; i <= parseInt(siteSurveyInfo.ap[0].num); i++) {
+    if (parseInt(index) == i) {
+      $('#apInputInfo' + i).show();
+    }
+    else {
+      $('#apInputInfo' + i).hide();
+    }
+  }
+}
+
+function setWirelessClientSettings(index)
+{
+  var band = 0, psk = "";
+
+  if (parseInt(siteSurveyInfo.ap[index].channel) <= 14) {
+    band = 0;
+  }
+  else {
+    band = 1;
+  }
+
+  if (parseInt(siteSurveyInfo.ap[index].auth) > 0) {
+    psk = $('#apInputInfoPsk' + index).val();
+    if (psk.length < 8) {
+      alert(WirelessWarn2);
+      $('input#apInputInfoPsk' + index).focus();
+      return;
+    }
+    else if (psk.length > 63) {
+      alert(WirelessWarn3);
+      $('input#apInputInfoPsk' + index).focus();
+      return;
+    }
+    else if (!checkSpace(psk)) {
+      alert(WirelessWarnPsk);
+      $('input#apInputInfoPsk' + index).focus();
+      return;
+    }
+  }
+
+  brSettings.rootApSsid = siteSurveyInfo.ap[index].ssid;
+  brSettings.rootApBand = band;
+  brSettings.rootApAuth = siteSurveyInfo.ap[index].auth;
+  brSettings.rootApPsk = psk;
+
+  rebootTimeout = 120;
+  showWindow("waitWindow");
+  countdownWindow("rebootingDig");
+  setTimeout(changeOpMode, 3000);
+}
+
+function drawSiteSurveyTable()
+{
+  var html;
+
+  $('#siteSurveyList').find("tr:gt(0)").remove();
+
+  if (siteSurveyInfo != null) {
+    for (i = 1; i <= parseInt(siteSurveyInfo.ap[0].num); i++) {
+      if (i%2 == 0) {
+        bgColor = 'bgcolor="#333333"';
+      }
+      else {
+        bgColor = '';
+      }
+
+      // SSID + Channel + Security + Band + Signal
+      html = '<tr id="apDisplayInfo' + i + '" onclick="showApInputInfo(' + i + ')">';
+      html += '<td align="left" class="style5" ' + bgColor + '>&nbsp;';
+      html += decodeURIComponent(siteSurveyInfo.ap[i].ssid);
+      html += '</td>';
+      html += '<td align="center" class="style5" ' + bgColor + '>';
+      html += siteSurveyInfo.ap[i].channel;
+      html += '</td>';
+      html += '<td align="left" class="style5" ' + bgColor + '>&nbsp;';
+      html += getSecurity(siteSurveyInfo.ap[i].auth);
+      html += '</td>';
+      html += '<td align="center" class="style5" ' + bgColor + '>';
+      html += getBand(siteSurveyInfo.ap[i].channel);
+      html += '</td>';
+      html += '<td align="center" ' + bgColor + '><img src="images/Wifi-';
+      html += getSignalImg(siteSurveyInfo.ap[i].signal);
+      html += '.png" width="30" height="25" /></td>';
+      html += '</tr>';
+
+      // Password + Connect
+      html += '<tr id="apInputInfo' + i + '" style="display:none">';
+      html += '<td colspan="4" class="style5" ' + bgColor + '>';
+      if (parseInt(siteSurveyInfo.ap[i].auth) != 0) {
+        html += '&nbsp' + RpWlanNetworkKey + '&nbsp:&nbsp';
+        html += '<input type="text" name="textfield" id="apInputInfoPsk' + i + '" />';
+      }
+      html += '</td>';
+      html += '<td align="center" ' + bgColor + '>';
+      html += '<table width="119" height="39" border="0" cellspacing="0" cellpadding="0">';
+      html += '<td class="button1" onclick="setWirelessClientSettings(' + i + ')">'
+      html += '<a>' + RpWlanConnect + '</a>';
+      html += '</td>';
+      html += '</table>';
+      html += '</td>';
+      html += '</tr>';
+
+      $('#siteSurveyList').append(html);
+    }
+  }
+
+  $('#scanWirelessAp').hide();
+  goToWirelessClientSettings();
+}
+
+function goToWirelessAdvancedPage()
+{
+  refresh('adv_wlan_2g.html');
+}
+
+function skipEnableWireless()
+{
+  closeWindow("noWirelessWindow");
+  siteSurveyInfo = null;
+  drawSiteSurveyTable();
+}
+
+function notifyNoWireless()
+{
+  showWindow("noWirelessWindow");
+}
+
+function getSiteSurveyStatus()
+{
+  var urls, opMode;
+
+  opMode = getOpMode();
+  switch(opMode) {
+    case 1:
+      urls = "/f/rp/wizardGetSiteSurvey";
+      break;
+    case 2:
+      urls = "/f/ap/wizardGetSiteSurvey";
+      break;
+    case 3:
+      urls = "/f/br/wizardGetSiteSurvey";
+      break;
+    case 0:
+    default:
+      urls = "/f/wizardGetSiteSurvey";
+      break;
+  }
+
+  $.ajax({
+    url: urls,
+    type: "GET",
+    success: function(result) {
+      siteSurveyInfo = result;
+      if (parseInt(siteSurveyInfo.ap[0].num) == -1) {
+		setTimeout(notifyNoWireless, 1000);
+      }
+      else {
+        drawSiteSurveyTable();
+      }
+    },
+    error : function() {
+      console.log("get " + urls + " error");
+      siteSurveyInfo = null;
+    }
+  });
+}
+
+function goToScanWirelessAp()
+{
+  $('#scanWirelessAp').show();
+  getSiteSurveyStatus();
+}
+
+function goToWirelessClientSettings()
+{
+  $('#wirelessClientSettings').show();
+}
+
+function changeOpMode()
+{
+  var argu, opMode, url;
+
+  argu = "opMode=3";
+  argu += "&lanType=" + brSettings.lanType;
+  if (brSettings.lanType == "static") {
+    argu += "&ipAddr=" + brSettings.ipAddr;
+    argu += "&subnet=" + brSettings.subnet;
+    argu += "&gateway=" + brSettings.gateway;
+    argu += "&dns1=" + brSettings.dns1;
+    argu += "&dns2=" + brSettings.dns2;
+  }
+
+  argu += "&rootApSsid=" + brSettings.rootApSsid;
+  argu += "&rootApBand=" + brSettings.rootApBand;
+  argu += "&rootApAuth=" + brSettings.rootApAuth;
+  argu += "&rootApPsk=" + brSettings.rootApPsk;
+
+  opMode = getOpMode();
+  switch(opMode) {
+    case 1:
+      url = "/f/rp/setOpMode";
+      break;
+    case 2:
+      url = "/f/ap/setOpMode";
+      break;
+    case 3:
+      url = "/f/br/setOpMode";
+      break;
+    case 0:
+    default:
+      url = "/f/setOpMode";
+      break;
+  }
+
+  $.ajax({
+    url: url,
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log(result);
+    },
+    error : function() {
+      console.log("post " + url + " error");
+    }
+  });
+
+  setOpModePara(3);
+}
+
+$(document).ready(function() {
+  $('#lanToWirelessClient').click(function(event) {
+    setlanSettings();
+  });
+
+  $('#staticToWirelessClient').click(function(event) {
+    brSettings.ipAddr = $('input#staticIpAddr').val();
+    brSettings.subnet = $('input#staticSubnet').val();
+    brSettings.gateway = $('input#staticGateway').val();
+    brSettings.dns1 = $('input#staticDns1').val();
+    brSettings.dns2 = $('input#staticDns2').val();
+
+    if (!checkIPAddr(brSettings.ipAddr) || isLocalhost(brSettings.ipAddr)) {
+      alert(LANWarn1);
+      $('input#staticIpAddr').focus();
+      return;
+    }
+
+    if (!checkIPMask(brSettings.subnet)) {
+      $("input#staticSubnet").focus();
+      return;
+    }
+
+    if(!checkIPAddr(brSettings.gateway)){
+      alert(WANWarn3);
+      $('input#staticGateway').focus();
+      return;
+    }
+
+    if (!checkIPAddr(brSettings.dns1)) {
+      alert(WANWarn2);
+      $('input#staticDns1').focus();
+      return;
+    }
+
+    if (brSettings.dns2!="") {
+      if (!checkIPAddr(brSettings.dns2)) {
+        alert(WANWarn2);
+        $('input#staticDns2').focus();
+        return;
+      }
+    }
+
+    $('#lanStaticSettings').hide();
+    goToScanWirelessAp();
+  });
+
+  $('#rescan').click(function(event) {
+    $('#wirelessClientSettings').hide();
+    goToScanWirelessAp();
+  });
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+		<tr>
+          <td align="center" background="images/UI-new_10.png">
+            <div id="lanSettings">
+              <table width="95%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td width="3%" height="25" align="left">
+                    <input type="radio" id="lanType" name="lanType" value="dhcp" checked></input>
+                  </td>
+                  <td width="97%" align="left"><h4><script>document.write(ApLanDhcp);</script></h4></td>
+                </tr>
+                <tr>
+                  <td><input type="radio" id="lanType" name="lanType" value="static"></input></td>
+                  <td align="left"><h4><script>document.write(ApLanStatic);</script></h4></td>
+                </tr>
+                <tr>
+                  <td align="left" class="style6">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td colspan="2" align="center"><table width="119" height="39" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td class="button1" id="lanToWirelessClient"><a><script>document.write(StartWirelessNext);</script></a></td>
+                    </tr>
+                  </table></td>
+                </tr>
+              </table>
+            </div>
+            <div id="lanStaticSettings" style="display:none">
+              <table width="95%" align="center" border="0" cellspacing="2" cellpadding="2">
+			    <tr>
+                  <td width="25%"></td>
+                  <td width="50%" align="left">
+                    <h4><script>document.write(SelectType3WarnStatucSetting);</script></h4>
+                    <table width="100%">
+                      <tr>
+                        <td width="28%" align="left" class="style8">
+                          <script>document.write(SelectType4WarnIPAddr);</script>
+                        </td>
+                        <td width="72%" align="left" class="style8" maxlength="32">
+                          <input type="text" id="staticIpAddr"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(SelectType3WarnSubnet);</script>
+                        </td>
+                        <td align="left" class="style8" maxlength="32">
+                          <input type="text" id="staticSubnet"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(SelectType3WarnGateway);</script>
+                        </td>
+                        <td align="left" class="style8" maxlength="32">
+                          <input type="text" id="staticGateway"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(SelectType3WarnDDNS1);</script>
+                        </td>
+                        <td align="left" class="style8" maxlength="32">
+                          <input type="text" id="staticDns1"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(SelectType3WarnDDNS2);</script>
+                        </td>
+                        <td align="left" class="style8" maxlength="32">
+                          <input type="text" id="staticDns2"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style6">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" align="center"><table width="119" height="39" border="0" cellspacing="0" cellpadding="0">
+                          <tr>
+                            <td class="button1" id="staticToWirelessClient"><a><script>document.write(StartWirelessNext);</script></a></td>
+                          </tr>
+                        </table></td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td width="25%"></td>
+                </tr>
+              </table>
+            </div>
+            <div id="scanWirelessAp" style="display:none">
+              <table width="95%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td colspan="2" align="center">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td colspan="2" align="center">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td width="40%" align="right" class="style7" valign="center">
+                    <img src="images/loading.gif">&nbsp;
+                  </td>
+                  <td width="60%" align="left" class="style7" valign="center">
+                    <script>document.write(RpWlanStartScan);</script>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="2" align="center">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td colspan="2" align="center">&nbsp;</td>
+                </tr>
+              </table>
+            </div>
+            <div id="wirelessClientSettings" style="display:none">
+              <table width="95%" align="center" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td width="10%"></td>
+                  <td width="80%" align="left"><h4><script>document.write(DashGuestSSID);</script></h4>
+                    <table width="100%" border="0" cellpadding="3" cellspacing="1" class="pixeltable" id="siteSurveyList">
+                      <tr>
+                        <td align="center" bgcolor="#666666"><h5><script>document.write(DashWirelessName);</script></h5></td>
+                        <td align="center" bgcolor="#666666"><h5><script>document.write(AdvChannel);</script></h5></td>
+                        <td align="center" bgcolor="#666666"><h5><script>document.write(RpWlanSecurity);</script></h5></td>
+                        <td align="center" bgcolor="#666666"><h5><script>document.write(RpWlanBand);</script></h5></td>
+                        <td align="center" bgcolor="#666666"><h5><script>document.write(RpWlanRadioSignal);</script></h5></td>
+                      </tr>
+                    </table>
+                    <table width="100%" height="39" border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td align="left" class="style6">&nbsp;</td>
+                      </tr>
+                      <tr align="center">
+                        <td><table width="119" height="39" border="0" cellspacing="0" cellpadding="0">
+                          <tr>
+                            <td class="button1" id="rescan">
+                              <a><script>document.write(AdvRescan);</script></a>
+                            </td>
+                          </tr>
+                        </table></td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td width="10%"></td>
+                </tr>
+              </table>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+<!-- End Save for Web Slices -->
+</body>
+<script type="text/javascript">
+  writeWindow("cover");
+  writeWindow("waitWindow");
+  writeWindow("noWirelessWindow");
+</script>
+</html>

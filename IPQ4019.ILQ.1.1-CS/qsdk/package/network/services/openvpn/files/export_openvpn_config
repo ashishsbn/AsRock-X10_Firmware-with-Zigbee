@@ -1,0 +1,69 @@
+#!/bin/sh
+# X10 export OpenVPN configuration
+
+. /usr/share/libubox/jshn.sh
+. /lib/config/uci.sh
+
+local client_all="/etc/openvpn_keys/client_all.opvn"
+local client_local="/etc/openvpn_keys/client_local.opvn"
+# get key_index from config
+local key_index=$(uci_get openvpn sample_server key_index)
+
+if [ -f "${client_all}" ] && [ "${key_index}" != "-1" ]; then
+	echo >&2 "${client_all} exists"
+else
+	echo >&2 "${client_all} does not exist, then create new one"
+	# generate random key index from 001 to 100
+	key_index=$(printf "%03d\n" "$(( ( RANDOM % 100 )  + 1 ))")
+	uci_set openvpn sample_server key_index $key_index
+	uci_commit openvpn
+	[ -f /lib/openvpn/gen_openvpn_cert ] && . /lib/openvpn/gen_openvpn_cert $key_index $client_all $client_local
+fi
+
+local ddns_enable ddns_domain
+
+ddns_enable=$(uci_get ddns myddns enabled 0)
+echo >&2 "ddns_enable: $ddns_enable"
+
+if [ "${ddns_enable}" == "0" ]; then
+	local ip_br0 ip_br0_subnet
+	json_load "$(ifstatus wan)"
+
+	json_select ipv4-address
+	json_select 1
+	json_get_var ddns_domain address
+
+	json_load "$(ifstatus lan)"
+
+	json_select ipv4-address
+	json_select 1
+	json_get_var ip_br0 address
+
+	ip_br0_subnet=`echo $ip_br0 | cut -d. -f1-3`
+	echo >&2 "br0: $ip_br0_subnet"
+else
+	ddns_domain=$(uci_get ddns myddns domain X10)
+fi
+echo >&2 "ddns_domain: $ddns_domain"
+
+[ "${ddns_domain}" != "" ] && sed -i '/remote /c\remote '"${ddns_domain}"' 1194'"${CR}" "${client_all}"
+[ "${ddns_domain}" != "" ] && sed -i '/remote /c\remote '"${ddns_domain}"' 1194'"${CR}" "${client_local}"
+[ "${ip_br0_subnet}" != "" ] && sed -i '/route /c\route '"${ip_br0_subnet}.0"' 255.255.255.0 vpn_gateway'"${CR}" "${client_local}"
+
+# remove dos and re-add dos carriage return
+tr -d '\r' < "${client_all}" > "${client_all}.tmp"
+sed -i 's/$/\r/' "${client_all}.tmp"
+mv "${client_all}.tmp" "${client_all}"
+
+tr -d '\r' < "${client_local}" > "${client_local}.tmp"
+sed -i 's/$/\r/' "${client_local}.tmp"
+mv "${client_local}.tmp" "${client_local}"
+
+# set firewall
+local openvpn_rule=$(uci show firewall | grep "OpenVPN" | sed 's/^.*firewall.//g' | sed 's/.name.*$//g')
+
+local openvpn_enabled=$(uci_get firewall ${openvpn_rule} enabled)
+if [ $openvpn_enabled -eq 0 ]; then
+	uci_set firewall ${openvpn_rule} enabled 1
+fi
+uci_commit firewall

@@ -1,0 +1,13 @@
+#!/bin/sh
+. "/usr/share/libubox/jshn.sh"
+
+MAC=`ifconfig eth0 | grep HWaddr | awk '{print $5}'`
+NET_MASK=`ifconfig eth0 | grep "inet addr" |awk '{split($0,a,":"); print a[4]}'`
+IP=`ifconfig br-lan | grep "inet addr" |awk '{split($0,a,":"); print a[2]}' | awk '{print $1}'`
+
+echo -e -n "Content-Type:application/json\r\n\r\n"
+json_init
+json_add_string 'ip' $IP
+json_add_string 'mac' $MAC
+json_dump
+

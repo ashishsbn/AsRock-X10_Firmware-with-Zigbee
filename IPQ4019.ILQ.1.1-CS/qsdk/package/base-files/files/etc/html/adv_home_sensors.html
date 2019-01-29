@@ -1,0 +1,127 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+
+$(document).ready(function() {
+  //console.log("document ready!!!");
+  isLoggedIn();
+
+  /* Setup the Menu */
+  $('#homeMenu').removeClass('menu');
+  $('#homeMenu').addClass('mainmenu');
+
+  /* Empty category arrays */
+  emptyElementArrays();
+
+  /* */
+  //Add UI table
+  var id, head, body;
+  id = "zigbeeDeviceList";
+  head = [{"desc" : "Address", "width" : "10%", "align" : "center"},
+          {"desc" : "Name", "width" : "20%", "align" : "center"},
+          {"desc" : "Manufacturer", "width" : "15%", "align" : "center"},
+          {"desc" : "Model", "width" : "15%", "align" : "center"}];
+  body = "";
+  tableList(id, head, body, "90%");
+
+  /* Get the data and fill the DOM */
+  var deviceArrayInfo = getData("/f/getHomeSensors");
+
+  if (deviceArrayInfo != null) {
+    var deviceInfo = deviceArrayInfo.devices;
+    for (i = 0; i < deviceArrayInfo.total; i++) {
+      var dev_addr, dev_name, dev_man_id, dev_model_name;
+      dev_addr = deviceInfo[i].device_id;
+      dev_name = deviceInfo[i].name;
+      dev_man_id = deviceInfo[i].manufacture;
+      dev_model_name = deviceInfo[i].model;
+
+      console.log("IEEEAddress = " + dev_addr + " DeviceName = " + dev_name + " ManufacturerId = " + dev_man_id + " ModelName = " + dev_model_name);
+      
+      //Update UI table
+      var bodyLine, bodyDevAddr, bodyDevName, bodyDevManId, bodyDevModelName, alive_string;
+      
+      bodyDevAddr = {"align" : "center", "bgcolor" : "#333333", "value" : dev_addr};
+      bodyDevName = {"align" : "center", "bgcolor" : "#333333", "value" : dev_name};
+      bodyDevManId = {"align" : "center", "bgcolor" : "#333333", "value" : dev_man_id};
+      bodyDevModelName = {"align" : "center", "bgcolor" : "#333333", "value" : dev_model_name};
+      bodyLine = [bodyDevAddr, bodyDevName, bodyDevManId, bodyDevModelName];
+      $('#' + id + 'TableBody').append(newTableBody(bodyLine));
+    }
+
+    /* Put the value into the DOM by key (id) */
+    $.each(deviceInfo, function(key, value) {
+      console.log("key : " + key + " value : " + value);
+      doAssignValues(key, value);
+    });
+
+  }
+
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" align="center" valign="top">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                <script type="text/javascript">writeLeftMenu();</script> 
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top"><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                <form id="openvpnform" name="openvpnform">
+                  <tr>
+                    <td colspan="2" align="left"><h4><script>document.write(HomeSensors);</script></h4></td>
+                  </tr>
+                  <tr>
+                    <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                  </tr>
+                  <tr id="zigbeeDeviceList">
+                  </tr>
+                </form>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+</div>
+<!-- End Save for Web Slices -->
+<script type="text/javascript">
+  writeWindow("cover");
+  writeWindow("waitWindow");
+</script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+#!/bin/sh /etc/rc.common
+
+. /lib/config/uci.sh
+
+START=97
+USE_PROCD=1
+PROG_M2M=/usr/sbin/orbwebm2m
+
+orbweb_add_m2m_instance() {
+	local file_config="$1"
+	local ssid
+	config_get ssid "$s" ssid
+
+	procd_open_instance
+	procd_set_param command "$PROG_M2M"	\
+		"${ssid}" "${file_config}"
+	procd_set_param respawn ${respawn_threshold:-60} ${respawn_timeout:-5} ${respawn_retry:-5}
+	procd_close_instance
+}
+
+start_instance() {
+	local s="$1"
+	local ssid
+	config_get ssid "$s" ssid
+	if [ -z "${ssid}" ]; then
+		local boardcfg_ssid="$(boardcfg -g SID)"
+		echo "acquire ssid ${boardcfg_ssid}"
+		uci_set orbweb "$s" ssid ${boardcfg_ssid}
+		uci_commit orbweb
+	fi
+
+	local file_config
+	config_get file_config "$s" config
+	if [ ! -z "${file_config}" ]; then
+		orbweb_add_m2m_instance "${file_config}"
+	fi
+}
+
+start_service() {
+	echo "[$(date)] ########### Starting orbwebm2m..." > /dev/console
+	logger -t warning orbwebm2m start
+	config_load orbweb
+	config_foreach start_instance orbweb_mqttd
+
+	# for orbweb debug
+	#/etc/init.d/telnet enable
+	#/etc/init.d/telnet start
+}
+
+service_triggers()
+{
+	procd_add_reload_trigger orbwebm2m
+}
+

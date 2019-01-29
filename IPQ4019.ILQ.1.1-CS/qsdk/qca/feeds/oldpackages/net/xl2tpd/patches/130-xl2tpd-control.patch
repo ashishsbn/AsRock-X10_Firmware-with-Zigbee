@@ -1,0 +1,13 @@
+diff -Naru xl2tpd-devel-20151125/xl2tpd-control.c xl2tpd-devel-20151125_fix/xl2tpd-control.c
+--- xl2tpd-devel-20151125/xl2tpd-control.c	2016-07-18 10:48:19.000000000 +0800
++++ xl2tpd-devel-20151125_fix/xl2tpd-control.c	2016-10-26 14:49:56.527113577 +0800
+@@ -319,6 +319,9 @@
+     }
+     close (control_fd);
+     
++    /* FIXME : add delay to wait result ready */
++    usleep(100);
++
+     /* read result from pipe */
+     char rbuf[CONTROL_PIPE_MESSAGE_SIZE] = "";
+     int command_result_code = read_result (

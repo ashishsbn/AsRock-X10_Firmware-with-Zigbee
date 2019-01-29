@@ -1,0 +1,22 @@
+#!/bin/sh /etc/rc.common
+
+START=90
+STOP=10
+
+start() {
+	[ -f /etc/ipsec.X10 ] && . /etc/ipsec.X10
+	ipsec start
+}
+
+stop() {
+	ipsec stop
+}
+
+restart() {
+	[ -f /etc/ipsec.X10 ] && . /etc/ipsec.X10
+	ipsec restart
+}
+
+reload() {
+	ipsec update
+}

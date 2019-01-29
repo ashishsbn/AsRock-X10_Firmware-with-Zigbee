@@ -1,0 +1,4 @@
+uip_arch.c:44:1:uip_add32	0	static
+uip_arch.c:72:1:uip_chksum	0	static
+uip_arch.c:98:1:uip_ipchksum	0	static
+uip_arch.c:104:1:uip_tcpchksum	16	static

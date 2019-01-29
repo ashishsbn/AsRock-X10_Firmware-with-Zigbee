@@ -1,0 +1,41 @@
+#!/bin/sh /etc/rc.common
+# (C) 2008 openwrt.org
+
+START=15
+
+boot() {
+if [ ! -e /sys/class/gpio/gpio36 ] &&
+  #[ ! -e /sys/class/gpio/gpio52 ] &&
+   [ ! -e /sys/class/gpio/gpio53 ] &&
+   [ ! -e /sys/class/gpio/gpio54 ] &&
+   [ ! -e /sys/class/gpio/gpio65 ] &&
+   [ ! -e /sys/class/gpio/gpio66 ] &&
+   [ ! -e /sys/class/gpio/gpio68 ]; then
+    echo "36" > /sys/class/gpio/export
+    #echo "52" > /sys/class/gpio/export
+    echo "53" > /sys/class/gpio/export
+    echo "54" > /sys/class/gpio/export
+    echo "65" > /sys/class/gpio/export
+    echo "66" > /sys/class/gpio/export
+    echo "68" > /sys/class/gpio/export
+    echo "out" > /sys/class/gpio/gpio36/direction
+    #echo "out" > /sys/class/gpio/gpio52/direction
+    echo "out" > /sys/class/gpio/gpio53/direction
+    echo "out" > /sys/class/gpio/gpio54/direction
+    echo "out" > /sys/class/gpio/gpio65/direction
+    echo "out" > /sys/class/gpio/gpio66/direction
+    echo "out" > /sys/class/gpio/gpio68/direction
+fi
+
+x10_leds_service &
+}
+
+start() {
+    echo "x10_leds_service start"
+    killall x10_leds_service
+    x10_leds_service &
+}
+
+stop() {
+    killall x10_leds_service
+}

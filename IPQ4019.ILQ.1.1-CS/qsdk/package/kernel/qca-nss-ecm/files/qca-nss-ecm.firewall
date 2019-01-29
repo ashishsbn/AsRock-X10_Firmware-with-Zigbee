@@ -1,0 +1,3 @@
+#!/bin/sh
+
+iptables -A FORWARD -m physdev --physdev-is-bridged -j ACCEPT

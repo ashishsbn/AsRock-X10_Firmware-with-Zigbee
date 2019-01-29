@@ -1,0 +1,161 @@
+--- a/drivers/net/wireless/ath/ath10k/core.c
++++ b/drivers/net/wireless/ath/ath10k/core.c
+@@ -1743,6 +1743,7 @@ static int ath10k_core_init_firmware_fea
+ int ath10k_core_start(struct ath10k *ar, enum ath10k_firmware_mode mode)
+ {
+ 	int status;
++	u32 val = 0;
+ 
+ 	lockdep_assert_held(&ar->conf_mutex);
+ 
+@@ -1863,6 +1864,23 @@ int ath10k_core_start(struct ath10k *ar,
+ 	ath10k_dbg(ar, ATH10K_DBG_BOOT, "firmware %s booted\n",
+ 		   ar->hw->wiphy->fw_version);
+ 
++
++	if (test_bit(WMI_SERVICE_EXT_RES_CFG_SUPPORT, ar->wmi.svc_map) &&
++	    (mode == ATH10K_FIRMWARE_MODE_NORMAL)) {
++
++		if (test_bit(WMI_SERVICE_COEX_GPIO, ar->wmi.svc_map))
++			val = WMI_FW_FEATURE_COEX_GPIO_SUPPORT;
++
++		status = ath10k_wmi_ext_resource_config(ar,
++				ar->hw_params.platform_type, val);
++		if (status) {
++			ath10k_err(ar,
++			 "failed to send ext resource cfg command : %d\n",
++			  status);
++			goto err_hif_stop;
++		}
++	}
++
+ 	status = ath10k_wmi_cmd_init(ar);
+ 	if (status) {
+ 		ath10k_err(ar, "could not send WMI init command (%d)\n",
+--- a/drivers/net/wireless/ath/ath10k/wmi-ops.h
++++ b/drivers/net/wireless/ath/ath10k/wmi-ops.h
+@@ -204,7 +204,8 @@ struct wmi_ops {
+ 				u32 vdev_id, const u8 *mac_addr,
+ 				const struct wmi_peer_sant_set_train_arg *arg);
+ 	struct sk_buff *(*gen_ext_resource_config)(struct ath10k *ar,
+-						   enum wmi_host_platform_type type);
++						   enum wmi_host_platform_type type,
++						   u32 fw_feature_bitmap);
+ 	struct sk_buff *(*gen_set_fwtest_param)(struct ath10k *ar,
+ 						u32 id, u32 value);
+ };
+@@ -1455,14 +1456,15 @@ ath10k_wmi_peer_set_smart_ant_train_info
+ 
+ static inline int
+ ath10k_wmi_ext_resource_config(struct ath10k *ar,
+-			       enum wmi_host_platform_type type)
++			       enum wmi_host_platform_type type,
++			       u32 fw_feature_bitmap)
+ {
+ 	struct sk_buff *skb;
+ 
+ 	if (!ar->wmi.ops->gen_ext_resource_config)
+ 		return -EOPNOTSUPP;
+ 
+-	skb = ar->wmi.ops->gen_ext_resource_config(ar, type);
++	skb = ar->wmi.ops->gen_ext_resource_config(ar, type, fw_feature_bitmap);
+ 
+ 	if (IS_ERR(skb))
+ 		return PTR_ERR(skb);
+--- a/drivers/net/wireless/ath/ath10k/wmi.c
++++ b/drivers/net/wireless/ath/ath10k/wmi.c
+@@ -1692,24 +1692,12 @@ void ath10k_wmi_put_wmi_channel(struct w
+ int ath10k_wmi_wait_for_service_ready(struct ath10k *ar)
+ {
+ 	unsigned long time_left;
+-	int ret;
+ 
+ 	time_left = wait_for_completion_timeout(&ar->wmi.service_ready,
+ 						WMI_SERVICE_READY_TIMEOUT_HZ);
+ 	if (!time_left)
+ 		return -ETIMEDOUT;
+ 
+-	if (test_bit(WMI_SERVICE_EXT_RES_CFG_SUPPORT, ar->wmi.svc_map) &&
+-	    ar->hw_params.platform_type) {
+-		ret = ath10k_wmi_ext_resource_config(ar,
+-						     ar->hw_params.platform_type);
+-		if (ret) {
+-			ath10k_warn(ar, "failed to send host platform type : %d\n",
+-				    ret);
+-			return ret;
+-		}
+-	}
+-
+ 	return 0;
+ }
+ 
+@@ -7694,16 +7682,19 @@ ath10k_wmi_op_gen_set_smart_ant_train_in
+ 
+ static struct sk_buff *
+ ath10k_wmi_10_4_op_gen_ext_resource_config(struct ath10k *ar,
+-					   enum wmi_host_platform_type type)
++					   enum wmi_host_platform_type type,
++					   u32 fw_feature_bitmap)
+ {
+-	struct wmi_ext_resource_config *cmd;
++	struct wmi_ext_resource_config_10_4_cmd *cmd;
+ 	struct sk_buff *skb;
+ 
+ 	skb = ath10k_wmi_alloc_skb(ar, sizeof(*cmd));
+ 	if (!skb)
+ 		return ERR_PTR(-ENOMEM);
+ 
+-	cmd = (struct wmi_ext_resource_config *)skb->data;
++	cmd = (struct wmi_ext_resource_config_10_4_cmd *)skb->data;
++	cmd->host_platform_config = __cpu_to_le32(type);
++	cmd->fw_feature_bitmap = __cpu_to_le32(fw_feature_bitmap);
+ 
+ 	ath10k_dbg(ar, ATH10K_DBG_WMI,
+ 		   "host platform type :%d\n", type);
+--- a/drivers/net/wireless/ath/ath10k/wmi.h
++++ b/drivers/net/wireless/ath/ath10k/wmi.h
+@@ -2656,6 +2656,33 @@ struct wmi_resource_config_10_4 {
+ 	__le32 qwrap_config;
+ } __packed;
+ 
++#define WMI_FW_FEATURE_LTEU_SUPPORT               BIT(0)
++#define WMI_FW_FEATURE_COEX_GPIO_SUPPORT          BIT(1)
++#define WMI_FW_FEATURE_AUX_RADIO_SPECTRAL_INTF    BIT(2)
++#define WMI_FW_FEATURE_AUX_RADIO_CHAN_LOAD_INTF   BIT(3)
++#define WMI_FW_FEATURE_BSS_CHANNEL_INFO_64        BIT(4)
++
++struct wmi_ext_resource_config_10_4_cmd {
++    /**
++     * @brief Host platform type config
++     */
++    __le32 host_platform_config;
++
++    /**
++     * @brief fw_feature_bitmask - Enable/Disable features in FW
++     * @details
++     *  The bits in fw_feature_bitmask are used as shown by the masks below:
++     *      0x0001 - LTEU Config enable/disable
++     *      0x0002 - COEX GPIO Config enable/disable
++     *      0x0004 - Aux Radio enhancement for spectral scan enable/disable
++     *      0x0008 - Aux Radio enhancement for chan load scan enable/disable
++     *      0x0010 - BSS channel info stats enable/disable
++     *  The features in question are enabled by setting the feature's bit to 1,
++     *  or disabled by setting the feature's bit to 0.
++     */
++    __le32 fw_feature_bitmap;
++};
++
+ /* strucutre describing host memory chunk. */
+ struct host_memory_chunk {
+ 	/* id of the request that is passed up in service ready */
+@@ -6470,10 +6497,6 @@ enum wmi_host_platform_type {
+ 	WMI_HOST_PLATFORM_LOW_PERF,
+ };
+ 
+-struct wmi_ext_resource_config {
+-	__le32 host_platform_config;
+-} __packed;
+-
+ struct wmi_fwtest_set_param_cmd {
+ 	__le32 id;
+ 	__le32 value;

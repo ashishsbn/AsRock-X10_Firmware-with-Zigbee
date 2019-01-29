@@ -1,0 +1,484 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/ajaxfileupload.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/asrock-ap.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script stype="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+var btlinkString;
+var btPartName;
+var DLLocation;
+function delusb(delid)
+{ 
+  $.ajax({
+    url: "/f/ap/setRemoveUSB",
+    type: "POST",
+    data: "target="+delid,
+    dataType: "json",
+    success: function(result) {
+      alert(USBWarn1);
+      window.location.reload(true);
+    },
+    error : function() {
+      console.log("post /f/ap/setRemoveUSB error");
+    }
+  });
+}
+
+function getUsbInfo(label, target, capacity, free)
+{
+  for (var i=0;i<label.length-1;i++) {
+    if(capacity[i] != "") {
+      para=target[i];
+      row = $("[name='usblist']")[0].insertRow( $("[name='usblist']")[0].rows.length)
+
+      btPartName=target[i];
+      $('#btDiskpartition').append('<option id="btpart' + i + '" value="' + btPartName + '">' + btPartName + '</option>');
+        
+      row.insertCell(0).innerHTML= label[i];
+      row.insertCell(1).innerHTML= target[i];
+      row.insertCell(2).innerHTML= free[i] + '/' + capacity[i];
+
+      if (label[i] == " ") {
+        row.insertCell(3).innerHTML= ' ';
+      }
+      else {
+        row.insertCell(3).innerHTML= '<a id=' + para + ' onclick="delusb(this.id)" href="#"> <img src="images/icon-.png" width="18" height="18"> </a>';
+      }
+
+      row.cells[0].setAttribute("bgcolor","#333333");
+      row.cells[1].setAttribute("bgcolor","#333333");
+      row.cells[2].setAttribute("bgcolor","#333333");
+      row.cells[3].setAttribute("bgcolor","#333333");
+      row.cells[0].setAttribute("class","style5");          
+      row.cells[0].setAttribute("align","center");
+      row.cells[1].setAttribute("class","style5");          
+      row.cells[1].setAttribute("align","center");          
+      row.cells[2].setAttribute("class","style5");          
+      row.cells[2].setAttribute("align","center");          
+      row.cells[3].setAttribute("class","style5");          
+      row.cells[3].setAttribute("align","center");          
+    }
+  }
+
+  var isDiskReady = false;
+  $('#btDiskpartition option').each(function() {
+    var disk_name = $(this).val();
+
+    if (DLLocation == disk_name) {
+      $('#btDiskpartition').val(DLLocation);
+      $('#btconfig').removeAttr('disabled');
+      isDiskReady = true;
+    }
+  });
+  if (isDiskReady == false) {
+    if (DLLocation != "") {
+      $('#btDiskpartition').append('<option value="unplug">' + USBNotInserted + '</option>');
+      $('#btDiskpartition').val("unplug");
+    }
+    $('#btconfig').attr('disabled','disabled');
+  }
+}
+
+function changePassStatus(MaskChecked)
+{
+  if(MaskChecked) {
+    document.getElementById("smbUserPassWord").type="password";
+  }
+  else {
+    document.getElementById("smbUserPassWord").type="text";
+  }
+}
+
+function btjump()
+{
+  if(document.getElementById("downloadAgentSwitch").children[0].id=="imageOff"){
+    alert(USBDownloadAgentWarn);
+    return false;
+  }
+  window.open(btlinkString);
+}
+
+function gotoReboot()
+{  
+  var smbUsername, smbPassword, smbEnable, argu;
+  var MediaServerName, MediaServerEnable;
+  var DLAgentEnable, BTPartition;
+  if(document.getElementById("usbStorageServerSwitch").children[0].id=="imageOn"){
+    $("[name='Device.USB.Storage.Enable']").val("ON");
+    if($("#smbUserName").val()==""){
+      alert(USBWarn2);
+      $("[name='Device.USB.UserName']").focus();
+      return false
+    }
+    if($("#smbUserName").val().length < 5){
+      alert(PasswordWarn1);
+      $("[name='Device.USB.UserName']").focus();
+      return false
+    }    
+    if($("#smbUserPassWord").val()==""){
+      alert(USBWarn3);
+      $("[name='Device.USB.UserPassWord']").focus();
+      return false
+    }
+    if($("#smbUserPassWord").val().length < 4){
+      alert(PasswordWarn31);
+      $("[name='Device.USB.UserPassWord']").focus();
+      return false
+    }
+    // var reg = /[0-9a-zA-Z]/;
+    // if(!reg.exec($("#smbUserPassWord").val()))
+    var reg = /\W/;
+    if(reg.test($("#smbUserName").val()))
+    {
+      alert(PopMsg1);
+      $("[name='Device.USB.UserName']").focus();
+      return false;
+    }
+    if(reg.test($("#smbUserPassWord").val()))
+    {
+      alert(GeneralInvalidPassword);
+      $("[name='Device.USB.UserPassWord']").focus();
+      return false;
+    }
+
+    smbEnable = "yes";
+  }
+  else {
+    $("[name='Device.USB.Storage.Enable']").val("OFF");
+    smbEnable = "no";
+  }
+  smbUsername = $("#smbUserName").val();
+  smbPassword = $("#smbUserPassWord").val();
+
+  if(document.getElementById("mediaServerSwitch").children[0].id=="imageOn") {
+    $("[name='Device.USB.MediaServer.Enable']").val("ON");
+    if($("#mediaName").val()=="") {
+      alert(USBWarn4);
+      $("[name='Device.USB.MediaServer.Name']").focus();
+      return false
+    }
+    if($("#mediaName").val().length < 5) {
+      alert(USBMediaServerNameWarn)
+      $("[name='Device.USB.MediaServer.Name']").focus();
+      return false
+    }    
+
+    MediaServerEnable = "1";
+  }
+  else {
+    $("[name='Device.USB.MediaServer.Enable']").val("OFF");
+    MediaServerEnable = "0";
+  }
+  MediaServerName = $("#mediaName").val();
+
+  if(document.getElementById("downloadAgentSwitch").children[0].id=="imageOn") {
+    $("[name='Device.BT.Enable']").val("ON");
+    DLAgentEnable = "1";
+  }
+  else {
+    $("[name='Device.BT.Enable']").val("OFF");
+    DLAgentEnable = "0";
+  }
+  $("[name='Device.BT.Path']").val($("#btDiskpartition").val());
+  BTPartition = $("#btDiskpartition").val();
+
+  argu = "smbUsername="+smbUsername;
+  argu += "&smbPassword="+smbPassword;
+  argu += "&smbEnable="+smbEnable;
+  argu += "&MediaServerEnable="+MediaServerEnable;
+  argu += "&MediaServerName="+MediaServerName;
+  argu += "&BTPartition="+BTPartition;
+  argu += "&DLAgentEnable="+DLAgentEnable;
+
+  $.ajax({
+    url: "/f/ap/setSambaMediaServerDLAgent",
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log("post /f/ap/setSambaMediaServerDLAgent success");
+    },
+    error : function() {
+      console.log("post /f/ap/setSambaMediaServerDLAgent error");
+    }
+  });
+
+  showWindow("waitWindow");
+  countdownWindow("waitingDig");
+}
+
+$(document).ready(function() {
+  var label, target, capacity, free;
+
+  isLoggedIn();
+
+  $('#usbMenu').removeClass('menu');
+  $('#usbMenu').addClass('mainmenu');
+
+  var AdvUSBInfo = getData("/f/ap/getAdvUSBInfo");
+  if(AdvUSBInfo != null) {
+    DLLocation = AdvUSBInfo.DownloadLocation;
+
+    if(AdvUSBInfo.EnableSamba == "yes") {
+      $("#usbStorageServerSwitch").val("ON");
+      changeOnOffStat(document.getElementById("usbStorageServerSwitch"));
+    }
+    else {
+      $("#usbStorageServerSwitch").val("OFF");
+    }
+    $("#smbUserName").val(AdvUSBInfo.SMBusername);
+    $("#smbUserPassWord").val(AdvUSBInfo.SMBpassword);
+    document.getElementById("smbUserPassWord").type="password";
+
+    if(AdvUSBInfo.MediaServerEnable == "1") {
+      $("#mediaServerSwitch").val("ON");
+      changeOnOffStat(document.getElementById("mediaServerSwitch"));
+    }
+    else {
+      $("#mediaServerSwitch").val("OFF");
+    }
+    $("#mediaName").val(AdvUSBInfo.MediaServerName);
+
+    if(AdvUSBInfo.EnableDLAgent == "1") {
+      $("#downloadAgentSwitch").val("ON");
+      changeOnOffStat(document.getElementById("downloadAgentSwitch"));
+    }
+    else {
+      $("#downloadAgentSwitch").val("OFF");
+    }
+    btlinkString = "http://"+AdvUSBInfo.LanIPAddress+":9091";
+    console.log("ling=["+btlinkString+"]");
+  }
+
+  var advUSBInfo = getData("/f/ap/getAdvUSB");
+  if(advUSBInfo != null){
+    label = advUSBInfo[0].label.split("^_");
+    target = advUSBInfo[0].target.split("^_");
+    capacity = advUSBInfo[0].capacity.split("^_");
+    free = advUSBInfo[0].free.split("^_");
+    getUsbInfo(label, target, capacity, free);
+  }
+
+  // Adjust layout
+  if ($("#langSelect").val() == "jp") {
+    $("#server").width("57%");
+    $("#serverValue").width("43%");
+    $("#username").width("45%");
+    $("#usernameValue").width("55%");
+    $("#server2").width("57%");
+    $("#server2Value").width("43%");
+    $("#server2Name").width("45%");
+    $("#server2NameValue").width("55%");
+    $("#agent").width("57%");
+    $("#agentValue").width("43%");
+    $("#agentLocation").width("45%");
+    $("#agentLocationValue").width("55%");
+  }
+
+  $("#Apply").click(function(event) {
+    gotoReboot();
+  });
+  $("#Cancel").click(function(event) {
+    refresh();
+  });
+
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+  <div style="width:960px;margin:0px auto;">
+    <table width="100%" cellspacing="0" cellpadding="0" border="0"><tbody>
+      <tr><td><table width="100%" cellspacing="0" cellpadding="0" border="0"><tbody>
+        <tr>
+          <td  valign="top"  height="20">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td background="images/UI-new_10.png" align="left">
+            <table width="100%" cellspacing="0" cellpadding="0" border="0"><tbody>
+              <tr>
+                <td></td>
+                <td width="168"></td>
+                <td></td>
+                <td width="736" valign="top" align="center"></td>
+              </tr>
+              <tr>
+                <td width="20"></td>
+                <td valign="top">
+                  <table cellspacing="0" cellpadding="0" border="0">
+                    <script type="text/javascript">writeApLeftMenu();</script>
+                  </table>
+                </td>
+                <td width="15"></td>
+                <td valign="top" align="center">
+                  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td class="leftmenustyle">
+                      </td>
+                      <td class="middlespace">&nbsp;</td>
+                      <td class="contentstyle">
+                        <table width="98%" border="0" cellspacing="2" cellpadding="2">
+                          <tr>
+                            <td width="75%" align="left"><table width="100%">
+                              <tr><td align="left">
+                                <h4><script>document.write(USBStorageStatus);</script></h4>
+                              </td></tr>
+                            </table></td>
+                            <td class="middlespace">&nbsp;</td>
+                            <td width="22%" align="right" valign="bottom">
+                              <span class="style8">
+                                <a href="#" onclick="document.location.reload(true)"><span ><script>document.write(GeneralRefreshStatus);</script></span></a>
+                              </span>
+                            </td>
+                          </tr>
+                          <tr><td colspan="3" align=right>
+                            <table width="95%" border="0" cellpadding="3" cellspacing="1" class="pixeltable" name="usblist">
+                              <tr>
+                                <td width="35%"align="center" bgcolor="#666666"><h5 ><script>document.write(USBDevice);</script></h5></td>
+                                <td width="35%"align="center" bgcolor="#666666"><h5><span><script>document.write(USBDiskName);</script></span></h5></td>
+                                <td width="25%"align="center" bgcolor="#666666"><h5 ><script>document.write(USBCapacity);</script></h5></td>
+                                <td width="5%"align="center" bgcolor="#666666"><h5></h5></td>
+                              </tr>
+                            </table>
+                          </td></tr>
+                          <tr><td>&nbsp;</td></tr>
+                          <tr><td>&nbsp;</td></tr>
+                          <tr>
+                            <td colspan="2" align="left"><table width="100%">
+                              <tr>
+                                <td id="server" width="41%" align="left" valign="middle">
+                                  <h4><span><script>document.write(USBStorageServer);</script></span></h4>
+                                </td>
+                                <td id="serverValue" width="59%" align="left">
+                                  <span id="usbStorageServerSwitch" onclick="changeOnOffStat(this)">
+                                    <img id="imageOff" src="images/botton03-off.png" width="68" height="30">
+                                  </span>
+                                </td>
+                              </tr>
+                            </table></td>
+                            <td class="middlespace">&nbsp;</td>
+                          </tr>
+                          <tr>
+                            <td colspan="3" align=right><table width="100%">
+                              <tr>
+                                <td id="username" class="style6" width="31%" align="left"><span><script>document.write(USBUsername);</script></span>&nbsp;</td>
+                                <td id="usernameValue" align="left" class="style6-2" width="69%">
+                                  <input size="15" maxlength="15" name="Device.USB.UserName" id="smbUserName" value="">
+                                </td>
+                              </tr>
+                              <tr>
+                                <td class="style6" align="left"><span ><script>document.write(USBPassword);</script></span>&nbsp;</td>
+                                <td align="left" class="style6-2">
+                                  <input size="15" maxlength="15" name="Device.USB.UserPassWord" id="smbUserPassWord" value="">
+                                  <input type="checkbox" checked onclick="changePassStatus(this.checked);">
+                                  <span><script>document.write(WirelessMask);</script></span>
+                                </td>
+                              </tr>
+                            </table></td>
+                          </tr>
+                          <tr><td>&nbsp;</td></tr>
+                          <tr><td>&nbsp;</td></tr>
+                          <tr>
+                            <td colspan="2" align="left"><table width="100%">
+                              <tr>
+                                <td id="server2" width="41%" align="left" valign="middle">
+                                  <h4><span><script>document.write(USBMediaServer);</script></span></h4>
+                                </td>
+                                <td id="server2Value" width="59%" align="left">
+                                  <span id="mediaServerSwitch" onclick="changeOnOffStat(this)">
+                                    <img id="imageOff" src="images/botton03-off.png" width="68" height="30">
+                                  </span>
+                                </td>
+                              </tr>
+                            </table></td>
+                            <td class="middlespace">&nbsp;</td>
+                          </tr>
+                          <tr>
+                            <td colspan="3" align=right><table width="100%">
+                              <tr>
+                                <td id="server2Name" class="style6" width="31%" align="left"><span><script>document.write(USBMediaServerName);</script></span>&nbsp;</td>
+                                <td id="server2NameValue" align="left" class="style6-2" width="69%"><input maxlength="30" name="Device.USB.MediaServer.Name" id="mediaName" value=""></td>
+                              </tr>
+                            </table></td>
+                          </tr>
+                          <tr><td>&nbsp;</td></tr>
+                          <tr><td>&nbsp;</td></tr>
+                          <tr>
+                            <td colspan="2" align="left"><table width="100%">
+                              <tr>
+                                <td id="agent" width="41%" align="left" valign="middle">
+                                  <h4><span><script>document.write(USBDownloadAgent);</script></span></h4>
+                                </td>
+                                <td id="agentValue" width="59%" align="left">
+                                  <span id="downloadAgentSwitch" onclick="changeOnOffStat(this)">
+                                    <img id="imageOff" src="images/botton03-off.png" width="68" height="30">
+                                  </span>
+                                </td>
+                              </tr>
+                            </table></td>
+                            <td class="middlespace">&nbsp;</td>
+                          </tr>
+                          <tr>
+                            <td colspan="3" align=right><table width="100%">
+                              <tr>
+                                <td id="agentLocation" class="style6" width="31%" align="left"><script>document.write(USBDownloadLocation);</script></td>
+                                <td id="agentLocationValue" align="left" class="style6-2" width="69%">
+                                  <select id="btDiskpartition"></select>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td class="style6" align="left">
+                                  <script>
+                                    document.write("<input id=\"btconfig\" type=\"button\" value=\"\" style=\"height:24px;font-size:12px\" onclick=\"btjump();\">");
+                                    document.getElementById("btconfig").value=USBConfigPage;
+                                  </script>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td colspan="2" style="color:#FFF;font-size:12px;padding:0px 0px 0px 20px" align="left">
+                                  <span>
+                                    <script>document.write(USBLoginCredentials);</script>
+                                  </span>
+                                </td>
+                              </tr>
+                            </table></td>
+                          </tr>
+                          <tr>
+                            <td colspan="2" align="cneter">
+                              <script type="text/javascript">writeApplyCancel();</script>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </tbody></table>
+          </td>
+        </tr>
+        <tr>
+          <td><img width="960" height="8" src="images/UI-new_11.png" /></td>
+        </tr>
+      </tbody></table></td></tr>
+    </tbody></table>
+    <script type="text/javascript">writeFooter();</script>
+  </div>
+  <!-- End Save for Web Slices -->
+  <script type="text/javascript">
+    writeWindow("cover");
+    writeWindow("waitWindow");
+  </script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+--- a/control.c
++++ b/control.c
+@@ -158,6 +158,16 @@ void control_zlb (struct buffer *buf, st
+     udp_xmit (buf, t);
+ }
+ 
++void X10_log(char *log_str)
++{
++	FILE *fp;
++	
++	fp = fopen(L2TPD_X10_LOG,"a+");
++	if(fp == NULL) return;
++	fputs(log_str,fp);
++	fclose(fp);
++}
++
+ int control_finish (struct tunnel *t, struct call *c)
+ {
+     /*
+@@ -181,6 +191,7 @@ int control_finish (struct tunnel *t, st
+     int i;
+     int pppd_passwdfd[2];
+     int tmptid,tmpcid;
++    char log_str[128];
+ 
+     if (c->msgtype < 0)
+     {
+@@ -997,6 +1008,12 @@ int control_finish (struct tunnel *t, st
+ 
+         start_pppd (c, po);
+         opt_destroy (po);
++        if(gconfig.x10log)
++        {
++             memset(log_str,0,sizeof(log_str));
++             sprintf(log_str,"Call established with %s, Local: %d, Remote: %d, Serial: %d\n",IPADDY (t->peer.sin_addr), c->ourcid, c->cid,c->serno);
++	     X10_log(log_str);
++        }
+         l2tp_log (LOG_NOTICE,
+              "Call established with %s, Local: %d, Remote: %d, Serial: %d\n",
+              IPADDY (t->peer.sin_addr), c->ourcid, c->cid,
+--- a/file.h
++++ b/file.h
+@@ -163,6 +163,7 @@ struct global
+     int sarefnum;		/* Value of IPSEC_REFINFO used by kernel
+ 				 * (we used to pick 22, but 2.6.36+ took that, so now we pick 30)
+ 				 * Changed in SAref patch in openswan 2.6.36 for linux 2.6.36+ */
++    int x10log;
+ };
+ 
+ extern struct global gconfig;   /* Global configuration options */
+--- a/l2tp.h
++++ b/l2tp.h
+@@ -217,6 +217,7 @@ struct tunnel_list
+ #define RAND_SYS 0x1
+ #define RAND_EGD 0x2
+ 
++#define L2TPD_X10_LOG "/var/log/xl2tpd_x10.log"
+ 
+ /* Error Values */
+ 
+--- a/xl2tpd.c
++++ b/xl2tpd.c
+@@ -339,6 +339,8 @@ void death_handler (int signal)
+     /* erase pid and control files */
+     unlink (gconfig.pidfile);
+     unlink (gconfig.controlfile);
++    if(gconfig.x10log)
++	unlink (L2TPD_X10_LOG);
+     free(dial_no_tmp);
+     close(server_socket);
+     close(control_fd);
+@@ -1653,6 +1655,7 @@ void init_args(int argc, char *argv[])
+ 
+     gconfig.daemon=1;
+     gconfig.syslog=-1;
++    gconfig.x10log=0;
+     memset(gconfig.altauthfile,0,STRLEN);
+     memset(gconfig.altconfigfile,0,STRLEN);
+     memset(gconfig.authfile,0,STRLEN);
+@@ -1714,6 +1717,9 @@ void init_args(int argc, char *argv[])
+                 strncpy(gconfig.controlfile,argv[i],
+                         sizeof(gconfig.controlfile) - 1);
+         }
++        else if (! strncmp(argv[i],"-x",2)){
++	    gconfig.x10log=1;
++	}
+         else {
+             usage();
+         }

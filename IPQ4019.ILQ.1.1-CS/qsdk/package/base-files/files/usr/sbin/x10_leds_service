@@ -1,0 +1,443 @@
+#!/bin/sh
+if [ ! -f /var/led_config ];
+then
+    echo "1000:1000:1002:1002:1000:1000:1000:1002:1" > /var/led_config
+else
+    exit 0
+fi
+RED_02_LED_BLINK_COUNT=0
+BLUE_02_LED_BLINK_COUNT=0
+BLUE_01_LED_BLINK_COUNT=0
+RED_01_LED_BLINK_COUNT=0
+AMBER_LED_BLINK_COUNT=0
+LORA_LED_BLINK_COUNT=0
+ZIGBEE_LED_BLINK_COUNT=0
+BLUE_LED_BLINK_COUNT=0
+RED_LED_BLINK_COUNT=0
+
+
+BLUE_LED_BLINK_END_COUNT=0
+RED_LED_BLINK_END_COUNT=0
+RED_02_LED_BLINK_END_COUNT=0
+BLUE_02_LED_BLINK_END_COUNT=0
+BLUE_01_LED_BLINK_END_COUNT=0
+RED_01_LED_BLINK_END_COUNT=0
+AMBER_LED_BLINK_END_COUNT=0
+LORA_LED_BLINK_END_COUNT=0
+ZIGBEE_LED_BLINK_END_COUNT=0
+IR_RED_LED=0
+IR_BLUE_LED=0
+
+lighting_level="ff"
+
+update_lighting_level()
+{
+	if [ ! -f /tmp/wanconnected ]; then
+		# This way means X10 is running initialization so keep the level be 100%
+		lighting_level="ff"
+		return
+	fi
+
+	level=$(uci get system.@system[0].lighting_level)
+	case "$level" in
+		"0")
+			lighting_level="00"
+			;;
+		"25")
+			lighting_level="20"
+			;;
+		"50")
+			lighting_level="80"
+			;;
+		"75")
+			lighting_level="c0"
+			;;
+		*)
+			lighting_level="ff"
+	esac
+}
+
+IR_RED_LED_ON()
+{
+	IR_RED_LED=1
+	ir_cmd -led 00 ff 00
+}
+
+IR_RED_LED_OFF()
+{
+	update_lighting_level
+	IR_RED_LED=0
+	if [ "$IR_BLUE_LED" == "1" ]; then
+		ir_cmd -led 00 00 00
+		ir_cmd -led 00 00 $lighting_level
+	else
+		ir_cmd -led 00 00 00
+	fi
+}
+
+IR_BLUE_LED_ON()
+{
+	update_lighting_level
+	IR_BLUE_LED=1
+	ir_cmd -led 00 00 $lighting_level
+}
+
+IR_BLUE_LED_OFF()
+{
+	IR_BLUE_LED=0
+	if [ "$IR_RED_LED" == "1" ]; then
+		ir_cmd -led 00 00 00
+		ir_cmd -led 00 ff 00
+	else
+		ir_cmd -led 00 00 00
+	fi
+}
+
+RED_02_LED()
+{
+	if [ "$1" == "1000" ]; then
+	    RED_02_LED_BLINK_COUNT=0
+	   echo "0" > /sys/class/gpio/gpio36/value
+	   #ir_cmd -led 00 00 00
+	   IR_RED_LED_OFF
+	   x10_leds_ctl RED_02_LED 1002	
+	elif [ "$1" == "1001" ]; then
+	    RED_02_LED_BLINK_COUNT=0
+	   echo "1" > /sys/class/gpio/gpio36/value
+	   #echo "RED_02_LED_ON"
+	   #ir_cmd -led 00 ff 00
+	   IR_RED_LED_ON
+	   x10_leds_ctl RED_02_LED 1002	
+	elif [ "$1" == "1002" ]; then
+	    RED_02_LED_BLINK_COUNT=0
+	else
+	    RED_02_LED_BLINK_END_COUNT=`expr $1 \\* 2`
+	    if [ $RED_02_LED_BLINK_COUNT -ge $1 ] && [ $RED_02_LED_BLINK_COUNT  -lt $RED_02_LED_BLINK_END_COUNT ]; then
+		echo "0" > /sys/class/gpio/gpio36/value
+		#ir_cmd -led 00 00 00
+		IR_RED_LED_OFF
+		RED_02_LED_BLINK_COUNT=`eval expr $RED_02_LED_BLINK_COUNT + 1`
+	    else
+		if [ $RED_02_LED_BLINK_COUNT -ge $RED_02_LED_BLINK_END_COUNT ]; then
+		    RED_02_LED_BLINK_COUNT=0
+		fi
+		RED_02_LED_BLINK_COUNT=`eval expr $RED_02_LED_BLINK_COUNT + 1`
+		#echo "RED_02_LED_ON"
+		echo "1" > /sys/class/gpio/gpio36/value
+		#ir_cmd -led 00 ff 00
+		IR_RED_LED_ON
+	    fi
+	fi
+}
+
+BLUE_02_LED()
+{
+	if [ "$1" == "1000" ]; then
+	   BLUE_02_LED_BLINK_COUNT=0
+	   #echo "0" > /sys/class/gpio/gpio52/value
+	   x10_leds_ctl BLUE_02_LED 1002
+	elif [ "$1" == "1001" ]; then
+	   BLUE_02_LED_BLINK_COUNT=0
+	   #echo "1" > /sys/class/gpio/gpio52/value
+	   #echo "BLUE_02_LED_ON"
+	   x10_leds_ctl BLUE_02_LED 1002
+	elif [ "$1" == "1002" ]; then
+	   BLUE_02_LED_BLINK_COUNT=0
+	else
+	    BLUE_02_LED_BLINK_END_COUNT=`expr $1 \\* 2`
+	    if [ $BLUE_02_LED_BLINK_COUNT -ge $1 ] && [ $BLUE_02_LED_BLINK_COUNT  -lt $BLUE_02_LED_BLINK_END_COUNT ] ; then
+		#echo "0" > /sys/class/gpio/gpio52/value
+		BLUE_02_LED_BLINK_COUNT=`eval expr $BLUE_02_LED_BLINK_COUNT + 1`
+	    else
+		if [ $BLUE_02_LED_BLINK_COUNT -ge $BLUE_02_LED_BLINK_END_COUNT ]; then
+		    BLUE_02_LED_BLINK_COUNT=0
+		fi
+		BLUE_02_LED_BLINK_COUNT=`eval expr $BLUE_02_LED_BLINK_COUNT + 1`
+		#echo "1" > /sys/class/gpio/gpio52/value
+		#echo "BLUE_02_LED_ON"
+	    fi
+	fi
+}
+BLUE_01_LED()
+{
+	if [ "$1" == "1000" ]; then
+	   BLUE_01_LED_BLINK_COUNT=0
+	   echo "0" > /sys/class/gpio/gpio68/value
+	   #ir_cmd -led 00 00 00
+	   IR_BLUE_LED_OFF 	
+	   x10_leds_ctl BLUE_01_LED 1002
+	elif [ "$1" == "1001" ]; then
+	   BLUE_01_LED_BLINK_COUNT=0
+	   echo "1" > /sys/class/gpio/gpio68/value
+	   #echo "BLUE_01_LED_ON"
+	   #ir_cmd -led 00 00 ff 
+	   IR_BLUE_LED_ON	
+	   x10_leds_ctl BLUE_01_LED 1002
+	elif [ "$1" == "1002" ]; then
+	   BLUE_01_LED_BLINK_COUNT=0
+	else
+	    BLUE_01_LED_BLINK_END_COUNT=`expr $1 \\* 2`
+	    if [ $BLUE_01_LED_BLINK_COUNT -ge $1 ] && [ $BLUE_01_LED_BLINK_COUNT  -lt $BLUE_01_LED_BLINK_END_COUNT ] ; then
+		echo "0" > /sys/class/gpio/gpio68/value
+		#ir_cmd -led 00 00 00
+		IR_BLUE_LED_OFF	
+		BLUE_01_LED_BLINK_COUNT=`eval expr $BLUE_01_LED_BLINK_COUNT + 1`		
+	    else
+		if [ $BLUE_01_LED_BLINK_COUNT -ge $BLUE_01_LED_BLINK_END_COUNT ]; then
+		    BLUE_01_LED_BLINK_COUNT=0
+		fi
+		BLUE_01_LED_BLINK_COUNT=`eval expr $BLUE_01_LED_BLINK_COUNT + 1`
+		#echo "BLUE_01_LED_ON"
+		echo "1" > /sys/class/gpio/gpio68/value
+		#ir_cmd -led 00 00 ff
+		IR_BLUE_LED_ON
+	    fi
+	fi
+}
+BLUE_LED()
+{
+	if [ "$1" == "1000" ]; then
+	   BLUE_LED_BLINK_COUNT=0
+	   echo "0" > /sys/class/gpio/gpio68/value
+	   #echo "0" > /sys/class/gpio/gpio52/value
+	   #ir_cmd -led 00 00 00
+	   IR_BLUE_LED_OFF 	
+	   x10_leds_ctl BLUE_LED 1002	
+	elif [ "$1" == "1001" ]; then
+	   BLUE_LED_BLINK_COUNT=0
+	   echo "1" > /sys/class/gpio/gpio68/value
+	   #echo "1" > /sys/class/gpio/gpio52/value
+	   #echo "BLUE_LED_ON"
+	   #ir_cmd -led 00 00 ff
+	   IR_BLUE_LED_ON
+	   x10_leds_ctl BLUE_LED 1002	
+	elif [ "$1" == "1002" ]; then
+	   BLUE_LED_BLINK_COUNT=0
+	elif [ "$1" == "1003" ]; then
+	    echo "1" > /sys/class/gpio/gpio68/value
+	    #echo "1" > /sys/class/gpio/gpio52/value
+	    #ir_cmd -led 00 00 ff
+	    IR_BLUE_LED_ON	
+	else
+	    BLUE_LED_BLINK_END_COUNT=`expr $1 \\* 2`
+	    if [ $BLUE_LED_BLINK_COUNT -ge $1 ] && [ $BLUE_LED_BLINK_COUNT  -lt $BLUE_LED_BLINK_END_COUNT ] ; then
+		echo "0" > /sys/class/gpio/gpio68/value
+		#echo "0" > /sys/class/gpio/gpio52/value
+		#ir_cmd -led 00 00 00
+		IR_BLUE_LED_OFF
+		BLUE_LED_BLINK_COUNT=`eval expr $BLUE_LED_BLINK_COUNT + 1`
+	    else
+		if [ $BLUE_LED_BLINK_COUNT -ge $BLUE_LED_BLINK_END_COUNT ]; then
+		    BLUE_LED_BLINK_COUNT=0
+		fi
+		BLUE_LED_BLINK_COUNT=`eval expr $BLUE_LED_BLINK_COUNT + 1`
+		echo "1" > /sys/class/gpio/gpio68/value
+		#echo "1" > /sys/class/gpio/gpio52/value
+		#echo "BLUE_LED_ON"
+		#ir_cmd -led 00 00 ff
+		IR_BLUE_LED_ON
+	    fi
+	fi
+}
+
+RED_LED()
+{
+	if [ "$1" == "1000" ]; then
+	    RED_LED_BLINK_COUNT=0
+	   echo "0" > /sys/class/gpio/gpio54/value
+	   echo "0" > /sys/class/gpio/gpio36/value
+	   #ir_cmd -led 00 00 00
+	   IR_RED_LED_OFF	
+	   x10_leds_ctl RED_LED 1002	
+	elif [ "$1" == "1001" ]; then
+	    RED_LED_BLINK_COUNT=0
+	   echo "1" > /sys/class/gpio/gpio54/value
+	   echo "1" > /sys/class/gpio/gpio36/value
+	   #echo "RED_LED_ON"
+	   #ir_cmd -led 00 ff 00
+	   IR_RED_LED_ON		
+	   x10_leds_ctl RED_LED 1002	
+	elif [ "$1" == "1002" ]; then
+	   RED_LED_BLINK_COUNT=0
+	else
+	    RED_LED_BLINK_END_COUNT=`expr $1 \\* 2`
+	    if [ $RED_LED_BLINK_COUNT -ge $1 ] && [ $RED_LED_BLINK_COUNT  -lt $RED_LED_BLINK_END_COUNT ]; then
+		echo "0" > /sys/class/gpio/gpio54/value
+		echo "0" > /sys/class/gpio/gpio36/value
+		#ir_cmd -led 00 00 00
+		IR_RED_LED_OFF
+		RED_LED_BLINK_COUNT=`eval expr $RED_LED_BLINK_COUNT + 1`
+	    else
+		if [ $RED_LED_BLINK_COUNT -ge $RED_LED_BLINK_END_COUNT ]; then
+		    RED_LED_BLINK_COUNT=0
+		fi
+		RED_LED_BLINK_COUNT=`eval expr $RED_LED_BLINK_COUNT + 1`
+		echo "1" > /sys/class/gpio/gpio54/value
+		echo "1" > /sys/class/gpio/gpio36/value
+		#echo "RED_LED_ON"
+		#ir_cmd -led 00 ff 00
+		IR_RED_LED_ON
+	    fi
+	fi
+}
+
+
+RED_01_LED()
+{
+	if [ "$1" == "1000" ]; then
+	    RED_01_LED_BLINK_COUNT=0
+	   echo "0" > /sys/class/gpio/gpio54/value
+	   #ir_cmd -led 00 00 00
+	   IR_RED_LED_OFF	
+	   x10_leds_ctl RED_01_LED 1002	
+	elif [ "$1" == "1001" ]; then
+	    RED_01_LED_BLINK_COUNT=0
+	   echo "1" > /sys/class/gpio/gpio54/value
+	   #ir_cmd -led 00 ff 00
+	   IR_RED_LED_ON	
+	   #echo "RED_01_LED_ON"
+	   x10_leds_ctl RED_01_LED 1002	
+	elif [ "$1" == "1002" ]; then
+	    RED_01_LED_BLINK_COUNT=0
+	else
+	    RED_01_LED_BLINK_END_COUNT=`expr $1 \\* 2`
+	    if [ $RED_01_LED_BLINK_COUNT -ge $1 ] && [ $RED_01_LED_BLINK_COUNT  -lt $RED_01_LED_BLINK_END_COUNT ] ; then
+		echo "0" > /sys/class/gpio/gpio54/value
+		#ir_cmd -led 00 00 00
+		IR_RED_LED_OFF
+		RED_01_LED_BLINK_COUNT=`eval expr $RED_01_LED_BLINK_COUNT + 1`
+	    else
+		if [ $RED_01_LED_BLINK_COUNT  -ge $RED_01_LED_BLINK_END_COUNT ]; then
+		    RED_01_LED_BLINK_COUNT=0
+		fi
+		RED_01_LED_BLINK_COUNT=`eval expr $RED_01_LED_BLINK_COUNT + 1`
+		echo "1" > /sys/class/gpio/gpio54/value
+		#echo "RED_01_LED_ON"
+		#ir_cmd -led 00 ff 00
+		IR_RED_LED_ON
+	    fi
+	fi
+}
+AMBER_LED()
+{
+	if [ "$1" == "1000" ]; then
+	   AMBER_LED_BLINK_COUNT=0
+	   echo "0" > /sys/class/gpio/gpio53/value
+	   x10_leds_ctl AMBER_LED 1002
+	elif [ "$1" == "1001" ]; then
+	   AMBER_LED_BLINK_COUNT=0
+	   echo "1" > /sys/class/gpio/gpio53/value
+	   #echo "AMBER_LED_ON"
+	   x10_leds_ctl AMBER_LED 1002
+	elif [ "$1" == "1002" ]; then
+	   AMBER_LED_BLINK_COUNT=0
+	else
+	    AMBER_LED_BLINK_END_COUNT=`expr $1 \\* 2`
+	    if [ $AMBER_LED_BLINK_COUNT -ge $1 ] && [ $AMBER_LED_BLINK_COUNT  -lt $AMBER_LED_BLINK_END_COUNT ] ; then
+		echo "0" > /sys/class/gpio/gpio53/value
+		AMBER_LED_BLINK_COUNT=`eval expr $AMBER_LED_BLINK_COUNT + 1`
+	    else
+		if [ $AMBER_LED_BLINK_COUNT  -ge $AMBER_LED_BLINK_END_COUNT ]; then
+		    AMBER_LED_BLINK_COUNT=0
+		fi
+		AMBER_LED_BLINK_COUNT=`eval expr $AMBER_LED_BLINK_COUNT + 1`
+		echo "1" > /sys/class/gpio/gpio53/value
+		#echo "AMBER_LED_ON"
+	    fi
+	fi
+}
+LORA_LED()
+{
+	if [ "$1" == "1000" ]; then
+	    LORA_LED_BLINK_COUNT=0
+	   echo "0" > /sys/class/gpio/gpio65/value
+	   x10_leds_ctl LORA_LED 1002
+	elif [ "$1" == "1001" ]; then
+	    LORA_LED_BLINK_COUNT=0
+	    echo "1" > /sys/class/gpio/gpio65/value
+	   x10_leds_ctl LORA_LED 1002
+	elif [ "$1" == "1002" ]; then
+	    LORA_LED_BLINK_COUNT=0
+	else
+	    LORA_LED_BLINK_END_COUNT=`expr $1 \\* 2`
+	    if [ $LORA_LED_BLINK_COUNT -ge $1 ] && [ $LORA_LED_BLINK_COUNT  -lt $LORA_LED_BLINK_END_COUNT ] ; then
+		echo "0" > /sys/class/gpio/gpio65/value
+		LORA_LED_BLINK_COUNT=`eval expr $LORA_LED_BLINK_COUNT + 1`
+	    else
+		if [ $LORA_LED_BLINK_COUNT  -ge $LORA_LED_BLINK_END_COUNT ]; then
+		    LORA_LED_BLINK_COUNT=0
+		fi
+		LORA_LED_BLINK_COUNT=`eval expr $LORA_LED_BLINK_COUNT + 1`
+		echo "1" > /sys/class/gpio/gpio65/value
+	    fi
+	fi
+}
+ZIGBEE_LED()
+{
+	if [ "$1" == "1000" ]; then
+	    ZIGBEE_LED_BLINK_COUNT=0
+	   echo "0" > /sys/class/gpio/gpio66/value
+	   x10_leds_ctl ZIGBEE_LED 1002
+	elif [ "$1" == "1001" ]; then
+	    ZIGBEE_LED_BLINK_COUNT=0
+	   echo "1" > /sys/class/gpio/gpio66/value
+	   x10_leds_ctl ZIGBEE_LED 1002
+	elif [ "$1" == "1002" ]; then
+	    ZIGBEE_LED_BLINK_COUNT=0
+	else
+	    ZIGBEE_LED_BLINK_END_COUNT=`expr $1 \\* 2`
+	    if [ $ZIGBEE_LED_BLINK_COUNT -ge $1 ] && [ $ZIGBEE_LED_BLINK_COUNT  -lt $ZIGBEE_LED_BLINK_END_COUNT ] ; then
+		echo "0" > /sys/class/gpio/gpio66/value
+		ZIGBEE_LED_BLINK_COUNT=`eval expr $ZIGBEE_LED_BLINK_COUNT + 1`
+	    else
+		if [ $ZIGBEE_LED_BLINK_COUNT  -ge $ZIGBEE_LED_BLINK_END_COUNT ]; then
+		    ZIGBEE_LED_BLINK_COUNT=0
+		fi
+		ZIGBEE_LED_BLINK_COUNT=`eval expr $ZIGBEE_LED_BLINK_COUNT + 1`
+		echo "1" > /sys/class/gpio/gpio66/value
+	    fi
+	fi
+}
+
+while [ 1 ]
+do
+	RED_02_LED=`cat /var/led_config | cut -d":" -f1`
+	RED_01_LED=`cat /var/led_config | cut -d":" -f2`
+	BLUE_02_LED=`cat /var/led_config | cut -d":" -f3`
+	BLUE_01_LED=`cat /var/led_config | cut -d":" -f4`
+	AMBER_LED=`cat /var/led_config | cut -d":" -f5`
+	LORA_LED=`cat /var/led_config | cut -d":" -f6`
+	ZIGBEE_LED=`cat /var/led_config | cut -d":" -f7`
+	RED_LED=`cat /var/led_config | cut -d":" -f8`
+	BLUE_LED=`cat /var/led_config | cut -d":" -f9`
+	if [ ! -e /var/factory ]; then
+	    if [ ! -z "$RED_LED" ]; then
+		RED_LED $RED_LED
+	    fi
+	    if [ ! -z "$BLUE_LED" ]; then
+		BLUE_LED $BLUE_LED
+	    fi
+	    if [ ! -z "$RED_02_LED" ]; then
+		RED_02_LED $RED_02_LED
+	    fi
+	    if [ ! -z "$RED_01_LED" ]; then
+		RED_01_LED $RED_01_LED
+	    fi
+	    if [ ! -z "$BLUE_02_LED" ]; then
+		BLUE_02_LED $BLUE_02_LED
+	    fi
+	    if [ ! -z "$BLUE_01_LED" ]; then
+		BLUE_01_LED $BLUE_01_LED
+	    fi
+	    if [ ! -z "$AMBER_LED" ]; then
+		AMBER_LED $AMBER_LED
+	    fi
+	    if [ ! -z "$LORA_LED" ]; then
+		LORA_LED $LORA_LED
+	    fi
+	    if [ ! -z "$ZIGBEE_LED" ]; then
+		ZIGBEE_LED $ZIGBEE_LED
+	    fi
+	fi
+	usleep 500000
+done

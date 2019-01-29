@@ -1,0 +1,6 @@
+uip_arp.c:160:1:uip_arp_update	24	static
+uip_arp.c:127:1:uip_arp_init	16	static
+uip_arp.c:144:1:uip_arp_timer	24	static
+uip_arp.c:235:1:uip_arp_ipin	0	static
+uip_arp.c:277:1:uip_arp_arpin	32	static
+uip_arp.c:352:1:uip_arp_out	24	static

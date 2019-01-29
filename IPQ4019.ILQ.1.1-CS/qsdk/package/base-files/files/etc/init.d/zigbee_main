@@ -1,0 +1,25 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+USE_PROCD=1
+ZSTACK_MAIN_BIN=/zias/main.bin
+
+start_service() {
+	
+	# kill all main.bin processes
+	[ ! -z $(pidof main.bin) ] && kill -9 $(pidof main.bin)
+
+	echo "[$(date)] ########### Starting Zigbee main.bin..." > /dev/console
+	logger -t warning zigbee_main start
+
+	procd_open_instance
+	procd_set_param respawn ${respawn_threshold:-60} ${respawn_timeout:-5} ${respawn_retry:-5}
+	procd_set_param command "$ZSTACK_MAIN_BIN"
+	procd_close_instance
+}
+
+service_triggers()
+{
+	procd_add_reload_trigger zigbee_main
+}
+

@@ -1,0 +1,118 @@
+#!/bin/sh
+
+
+HA_NO=`echo $1`
+perform_action=`echo $2`
+device_id=`echo $3 | awk '{split($0,a,".");print a[1]}'`
+value=`echo $3 | awk '{split($0,a,"==");print a[2]}'`
+
+json_str=`echo $4|sed s/\'/\"/g  `
+if [ "$HA_NO" -gt 9999 ];then
+	HA_NO=`expr $HA_NO - 10000`
+fi
+
+exec_length=`echo $json_str  |  jq length`
+
+echo "Action: $perform_action , Scene: $HA_NO, Device_ID: $device_id, Trigger_value: $value, Exec_length $exec_length"
+is_rule_exist=`sqlite3 /etc/orbweb.db "select HA_NO from ifttt where HA_NO = $HA_NO"`
+
+delete_this_scene(){
+        # Removing Scene                                                        
+        scenes_cmd=`echo {\"action\":1,\"group_id\":$HA_NO,\"scene_id\":$HA_NO}`                               
+        echo $scenes_cmd                                                                                       
+        ubus call zstack scenes $scenes_cmd                                                                    
+                                                                                                               
+        #Removing Group                                                                                        
+        group_cmd=`echo {\"action\":2,\"dev_addr\":\"00124B0008B15AC7\",\"group_id\":$HA_NO,\"endpoint_id\":1}`
+        echo $group_cmd                                                
+        ubus call zstack group $group_cmd                              
+                                                                       
+	echo "Scene is deleted, Deleting entry from DB"    
+        sqlite3 /etc/orbweb.db "delete from ifttt where HA_NO = $HA_NO"  
+
+}
+
+if [ "$perform_action" == "delete_ifttt" -o "$perform_action" == "delete_schedule" -o "$perform_action" == "scene" -a "$exec_length" == "" ]
+then
+	delete_this_scene
+        exit 1                                                           
+fi
+
+if [ ! -z "$is_rule_exist" ]
+then
+	delete_this_scene
+fi
+
+new_scene_number=$HA_NO
+echo  $3 length : $exec_length
+
+while [ $exec_length -gt 0 ];
+do
+
+        dev_addr=`echo $json_str | jq --arg INDEX $exec_length '.[$INDEX | tonumber - 1 ].id' -r `
+        group_id=`echo $json_str | jq --arg INDEX $exec_length '.[$INDEX | tonumber - 1 ].group_id' -r `
+        action=`echo $json_str | jq --arg INDEX $exec_length '.[$INDEX | tonumber - 1 ].action' -r `
+
+        echo $dev_addr $action
+        if [ "$dev_addr" == "hub" ];then
+                echo "Changing Mode of Hub"
+	        exec_length=`expr $exec_length - 1`
+                continue
+        fi
+	
+	if [ "$action" == "off" ];then
+		action_no=0 
+	elif [ "$action" == "on" ];then
+		action_no=1
+	else 
+		action_no=2
+	fi
+		
+	echo $new_scene_number $dev_addr $action_no
+	if [ "$dev_addr" != "null" ];then
+
+        group_cmd=`echo {\"action\":1,\"dev_addr\":\"$dev_addr\",\"group_id\":$new_scene_number,\"endpoint_id\":1}`
+	echo $group_cmd
+        ubus call zstack group $group_cmd
+
+        add_scene_cmd=`echo {\"dev_addr\":\"$dev_addr\",\"endpoint_id\":1,\"group_id\":$new_scene_number,\"scene_id\":$new_scene_number,\"device_type\":270,\"onoff\":$action_no,\"level\":0,\"color\":0}`
+	echo $add_scene_cmd
+        ubus call zstack add_scene $add_scene_cmd 
+       # ubus call zstack add_scene '{\"dev_addr\":\"$dev_addr\",\"endpoint_id\":1,\"group_id\":$new_scene_number,\"scene_id\":$new_scene_number,\"device_type\":270,\"onoff\":$action,\"level\":0,\"color\":0}'
+
+        scenes_cmd=`echo {\"action\":4,\"group_id\":$new_scene_number,\"scene_id\":$new_scene_number}`
+	echo $scenes_cmd
+        #ubus call zstack scenes $scenes_cmd
+        #ubus call zstack scenes '{\"action\":4,\"group_id\":$new_scene_number,\"scene_id\":$new_scene_number}'
+
+
+	sleep 2
+	else
+		echo "Found Group"
+		device_list=`sqlite3 /etc/orbweb.db "select DEVICE_LIST from GROUPS where GROUP_ID = $group_id"`
+		group_len=`echo $device_list | jq length`
+		while [ $group_len -gt 0 ];do
+        		dev_addr=`echo $device_list | jq --arg INDEX $group_len '.[$INDEX | tonumber - 1 ]' -r `
+			echo "Adding group device: $dev_addr in the scene"
+		        group_len=`expr $group_len - 1`
+
+		        group_cmd=`echo {\"action\":1,\"dev_addr\":\"$dev_addr\",\"group_id\":$new_scene_number,\"endpoint_id\":1}`
+			echo $group_cmd
+		        ubus call zstack group $group_cmd
+
+		        add_scene_cmd=`echo {\"dev_addr\":\"$dev_addr\",\"endpoint_id\":1,\"group_id\":$new_scene_number,\"scene_id\":$new_scene_number,\"device_type\":270,\"onoff\":$action_no,\"level\":0,\"color\":0}`
+			echo $add_scene_cmd
+		        ubus call zstack add_scene $add_scene_cmd 
+		done
+	fi
+        exec_length=`expr $exec_length - 1`
+done
+
+if [ "$perform_action" == "scene" ]
+then
+	echo "Ading rule in DB."
+        sqlite3 /etc/orbweb.db "insert into ifttt (HA_NO , EXEC, ACTION) VALUES ($HA_NO , $new_scene_number , '$json_str')"
+else
+	echo "Storing $json_str into DB"
+        sqlite3 /etc/orbweb.db "insert into ifttt (HA_NO , RULE_DEVICE_ID , VALUE , EXEC, ACTION) VALUES ($HA_NO , '$device_id' , $value , $new_scene_number ,'$json_str')"
+fi

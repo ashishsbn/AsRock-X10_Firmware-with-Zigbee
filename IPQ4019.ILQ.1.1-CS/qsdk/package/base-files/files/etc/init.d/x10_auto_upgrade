@@ -1,0 +1,21 @@
+#!/bin/sh /etc/rc.common
+# (C) 2008 openwrt.org
+
+START=96
+
+boot() {
+    pidof auto_upgrade.sh
+    if [ $? == 0 ]; then
+	exit 0
+    else
+	auto_upgrade.sh &
+    fi
+}
+
+start() {
+    echo "start"
+}
+
+stop() {
+    echo "stop"
+}

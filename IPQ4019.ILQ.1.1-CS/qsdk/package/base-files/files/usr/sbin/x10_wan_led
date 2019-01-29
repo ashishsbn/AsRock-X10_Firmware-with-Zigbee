@@ -1,0 +1,244 @@
+#!/bin/sh
+
+. /usr/share/libubox/jshn.sh
+. /lib/config/uci.sh
+
+CHECK_INTERVAL=5
+DNS_TIMEOUT=3
+WAN_CONNECTED=0
+OP_MODE=$(uci_get system @system[0] op_mode 0)
+PRI_WLAN_CONNECTED=0
+ROOT_AP_5G=0
+ASSOC_LIST_FILE=/tmp/assoc_wlan_clients
+WAN_STATUS=
+LIGHTING_LEVEL=
+PRE_LIGHTING_LEVEL=
+DNS_SERVER_IP=
+DNS_ANSWER=
+
+eth_power_cycle()
+{
+	for port in $(seq 2 5)
+	do
+		ssdk_sh port poweroff set $port
+	done
+	sleep 1
+	for port in $(seq 2 5)
+	do
+		ssdk_sh port poweron set $port
+	done
+}
+
+kick_wlan_clients()
+{
+	if [ "$OP_MODE" != "1" ] ; then
+		return
+	fi
+	for ifname in ath0 ath1
+	do
+		wlanconfig $ifname list sta | sed '1d' | awk '{ print $1 }' > $ASSOC_LIST_FILE
+		for i in $(seq 1 300)
+		do
+			CLIENT_MAC=`sed "$i!d" "$ASSOC_LIST_FILE"`
+			if [ -n "$CLIENT_MAC" ]; then
+				iwpriv $ifname kickmac $CLIENT_MAC
+			else
+				break;
+			fi
+		done
+		rm $ASSOC_LIST_FILE
+	done
+}
+
+restart_usb()
+{
+	/etc/init.d/minidlna restart
+	uci_set transmission @transmission[0] rpc_whitelist "127.0.0.1,192.168.1.*"
+	uci_commit transmission
+	/etc/init.d/transmission restart
+}
+
+root_ap_disconnected()
+{
+	CONN_TYPE=$(uci_get network lan proto)
+	if [ "$CONN_TYPE" == "dhcp" ]; then
+		# Perform DHCP Client Release
+		kill -SIGUSR2 `cat /var/run/udhcpc-br-lan.pid`
+		sleep 1
+		# Enable default IP and DHCP server
+		ifup lan2
+		sleep 3
+		restart_usb
+	fi
+	eth_power_cycle
+	kick_wlan_clients
+}
+
+root_ap_connected()
+{
+	#KKHuang: The reaction of DHCP is done at /etc/udhcpc.user
+	CONN_TYPE=$(uci_get network lan proto)
+	if [ "$CONN_TYPE" == "static" ]; then
+		eth_power_cycle
+		kick_wlan_clients
+	fi
+}
+
+check_phy()
+{
+	if [ "$OP_MODE" == "0" ] ; then
+		ETH_CONNECTED=`ethtool eth0 | grep "Link detected: yes"`
+		if [ -n "$ETH_CONNECTED" ]; then
+			return 1
+		else
+			return 0
+		fi
+	elif [ "$OP_MODE" == "2" ] ; then
+		for port in $(seq 2 5)
+		do
+			ETH_CONNECTED=`ssdk_sh port linkstatus get ${port} | grep ENABLE`
+			if [ -n "$ETH_CONNECTED" ]; then
+				return 1
+			fi
+		done
+		return 0
+	else
+		if [ "$OP_MODE" == "1" ] ; then
+			ROOT_AP_5G=$(uci_get wireless ath11 ssid)
+			if [ -z "$ROOT_AP_5G" ]; then
+				WLAN_CLIENT_IFACE="ath01"
+			else
+				WLAN_CLIENT_IFACE="ath11"
+			fi
+		else
+			ROOT_AP_5G=$(uci_get wireless ath1 ssid)
+			if [ -z "$ROOT_AP_5G" ]; then
+				WLAN_CLIENT_IFACE="ath0"
+			else
+				WLAN_CLIENT_IFACE="ath1"
+			fi
+		fi
+		WLAN_CONNECTED=`iwconfig $WLAN_CLIENT_IFACE | grep ESSID`
+		if [ -n "$WLAN_CONNECTED" ]; then
+			WLAN_CONNECTED=`wpa_cli -i"$WLAN_CLIENT_IFACE" -p/var/run/wpa_supplicant-"$WLAN_CLIENT_IFACE" status | grep ^wpa_state= | cut -f2- -d=`
+			if [ "$WLAN_CONNECTED" == "COMPLETED" ]; then
+				if [ "$PRI_WLAN_CONNECTED" != "1" ]; then
+					PRI_WLAN_CONNECTED=1
+					root_ap_connected
+				fi
+				return 1
+			else
+				if [ "$PRI_WLAN_CONNECTED" != "0" ]; then
+					PRI_WLAN_CONNECTED=0
+					root_ap_disconnected
+				fi
+				return 0
+			fi
+		else
+			if [ "$PRI_WLAN_CONNECTED" != "0" ]; then
+				PRI_WLAN_CONNECTED=0
+				root_ap_disconnected
+			fi
+			return 0
+		fi
+	fi
+}
+
+check_dns_response()
+{
+	DNS_ANSWER=`dig +time=$DNS_TIMEOUT +tries=1 +noall +answer @$DNS_SERVER_IP $1 | grep $1 | awk '{split($0,a," "); print a[NF]}' | grep -v -E '^(192\.168|10\.|172\.1[6789]\.|172\.2[0-9]\.|172\.3[01]\.)'`
+}
+
+check_ping_response()
+{
+        ping -q -c 1 -W 1 -w 3 $1 > /dev/null
+}
+
+check_connection()
+{
+	check_phy
+	if [ $? == 0 ]; then
+		return 0
+	else
+		DNS_SERVER_IP=`cat /tmp/resolv.conf.auto | grep nameserver | cut -d' ' -f2 | head -n 1`
+		if [ -z "$DNS_SERVER_IP" ]; then
+			return 1
+		else
+			check_dns_response www.google.com
+			if [ $? == 0 -a -n "$DNS_ANSWER" ]; then
+				check_ping_response www.google.com
+				if [ $? == 0 ]; then
+					return 2
+				else
+					return 0
+				fi
+			else
+				check_phy
+				if [ $? == 0 ]; then
+					return 0
+				else
+					check_dns_response www.apple.com
+					if [ $? == 0 -a -n "$DNS_ANSWER" ]; then
+						check_ping_response www.apple.com
+						if [ $? == 0 ]; then
+							return 2
+						else
+							return 0
+						fi
+					else
+						check_phy
+						if [ $? == 0 ]; then
+							return 0
+						else
+							check_dns_response www.microsoft.com
+							if [ $? == 0 -a -n "$DNS_ANSWER" ]; then
+								check_ping_response www.microsoft.com
+								if [ $? == 0 ]; then
+									return 2
+								else
+									return 0
+								fi
+							else
+								return 1
+							fi
+						fi
+					fi
+				fi
+			fi
+		fi
+	fi
+}
+
+update_led()
+{
+	if [ "$LIGHTING_LEVEL" != "$PRE_LIGHTING_LEVEL" ] || [ "$WAN_STATUS" != "$1" ]; then
+		WAN_STATUS=$1;
+		x10_leds_ctl $WAN_STATUS
+	fi
+	PRE_LIGHTING_LEVEL=$LIGHTING_LEVEL
+}
+
+while [ 1 ]
+do
+	if [ ! -e /var/factory ] && [ ! -e /var/stopwanled ]; then
+		check_connection
+		WAN_CONNECTED=$?
+		if [ $WAN_CONNECTED == 0 ]; then
+			update_led ETH_DISCONNECTED
+			rm -rf /tmp/wanconnected
+		elif [ $WAN_CONNECTED == 2 ]; then
+			LIGHTING=$(uci_get system @system[0] lighting 1)
+			LIGHTING_LEVEL=$(uci_get system @system[0] lighting_level 1)
+				if [ "$LIGHTING" == "0" ]; then
+					update_led INTERNET_CONNECTED_OFF
+				else
+					update_led INTERNET_CONNECTED
+				fi
+			touch /tmp/wanconnected
+		else
+			update_led WAN_DISCONNECTED
+			rm -rf /tmp/wanconnected
+		fi
+		sleep $CHECK_INTERVAL
+	fi
+done

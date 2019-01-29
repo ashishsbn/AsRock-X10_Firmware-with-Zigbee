@@ -1,0 +1,18 @@
+#!/bin/sh
+. "/usr/share/libubox/jshn.sh"
+
+echo 1 > /tmp/learnModeStatus
+`sleep 60 && echo 0 > /tmp/learnModeStatus` &
+ubus call zstack permit_join '{"enable":true}' > /dev/null 2>&1
+if [ $? -ne 0 ]
+then
+        echo -e -n "Content-Type:application/json\r\n\r\n"
+        echo '{"result":0,"message":"Could not start learn mode."}'
+        exit
+fi
+echo -e -n "Content-Type:application/json\r\n\r\n"
+json_init
+json_add_string 'result' 1
+json_add_string 'message' 'Updated successfully.'
+json_dump
+

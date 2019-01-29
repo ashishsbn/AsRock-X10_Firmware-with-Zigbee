@@ -1,0 +1,22 @@
+diff -Nur a/linux/net/ipsec/ipsec_ah.c b/linux/net/ipsec/ipsec_ah.c
+--- a/linux/net/ipsec/ipsec_ah.c	2014-12-04 19:56:48.353559969 -0800
++++ b/linux/net/ipsec/ipsec_ah.c	2014-12-04 19:59:50.673564561 -0800
+@@ -345,6 +345,7 @@
+ struct inet_protocol ah_protocol = {
+   .handler = ipsec_rcv,
+   .no_policy = 1,
++  .netns_ok  = 1,
+ };
+ #else
+ struct inet_protocol ah_protocol =
+diff -Nur a/linux/net/ipsec/ipsec_esp.c b/linux/net/ipsec/ipsec_esp.c
+--- a/linux/net/ipsec/ipsec_esp.c	2014-12-04 19:56:48.357559969 -0800
++++ b/linux/net/ipsec/ipsec_esp.c	2014-12-04 19:57:35.633561160 -0800
+@@ -580,6 +580,7 @@
+ struct inet_protocol esp_protocol = {
+   .handler = ipsec_rcv,
+   .no_policy = 1,
++  .netns_ok  = 1,
+ };
+ 
+ #ifdef CONFIG_KLIPS_IPV6

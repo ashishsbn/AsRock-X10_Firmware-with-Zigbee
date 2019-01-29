@@ -1,0 +1,33 @@
+#!/bin/sh
+# X10 Orbweb configurate account information
+
+. /usr/share/libubox/jshn.sh
+. /lib/config/uci.sh
+
+if [ ! -z $1 ]; then
+	echo "parser $1 ..."
+	json_load "$(cat $1)"
+
+	json_get_var device_key device_key
+	json_get_var username mqtt_user
+	json_get_var password mqtt_pass
+
+	echo "config: $1"
+	echo "device_key: $device_key"
+	echo "username: $username"
+	echo "password: $password"
+
+	#uci_set orbweb orbweb_mqttd config "$1"
+	uci_set orbweb orbweb_mqttd enable 1
+	[ ! -z "$device_key" ] && uci_set orbweb orbweb_mqttd device_key "$device_key"
+	[ ! -z "$username" ] && uci_set orbweb orbweb_mqttd username "$username"
+	[ ! -z "$password" ] && uci_set orbweb orbweb_mqttd password "$password"
+	uci_commit orbweb
+
+	[ ! -z $(pidof orbweb_mqttd) ] && kill -9 $(pidof orbweb_mqttd)
+	echo "Start orbweb_mqttd..."
+	/etc/init.d/orbweb stop
+	/etc/init.d/orbweb start
+else
+	echo "need input file name..."
+fi

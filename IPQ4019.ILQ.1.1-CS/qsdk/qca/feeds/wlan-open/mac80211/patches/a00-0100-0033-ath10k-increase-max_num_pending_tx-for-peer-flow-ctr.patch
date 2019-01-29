@@ -1,0 +1,76 @@
+--- a/drivers/net/wireless/ath/ath10k/ce.h
++++ b/drivers/net/wireless/ath/ath10k/ce.h
+@@ -22,7 +22,7 @@
+ 
+ /* Maximum number of Copy Engine's supported */
+ #define CE_COUNT_MAX 12
+-#define CE_HTT_H2T_MSG_SRC_NENTRIES 4096
++#define CE_HTT_H2T_MSG_SRC_NENTRIES 8192
+ 
+ /* Descriptor rings must be aligned to this boundary */
+ #define CE_DESC_RING_ALIGN	8
+--- a/drivers/net/wireless/ath/ath10k/core.c
++++ b/drivers/net/wireless/ath/ath10k/core.c
+@@ -1707,6 +1707,22 @@ static int ath10k_core_init_firmware_fea
+ 			ar->tx_chain_mask = TARGET_QCA40XX_TX_CHAIN_MASK;
+ 			ar->rx_chain_mask = TARGET_QCA40XX_RX_CHAIN_MASK;
+ 		}
++
++		/* Firmware supporting peer flow control requires deeper Tx
++		 * queue for optimal operation with MU-MIMO traffic. The
++		 * tradeoff is smaller number of active peers.
++		 *
++		 * Without sufficient Tx depth firmware could end up starving
++		 * some clients during MU traffic.
++		 */
++		if (test_bit(ATH10K_FW_FEATURE_PEER_FLOW_CONTROL,
++			     ar->fw_features)) {
++			/* num_active_peers is set in WMI service ready event
++			 * handler
++			 */
++			ar->qcache_active_peers = TARGET_10_4_QCACHE_ACTIVE_PEERS_PFC;
++			ar->htt.max_num_pending_tx = TARGET_10_4_NUM_MSDU_DESC_PFC;
++		}
+ 		break;
+ 	case ATH10K_FW_WMI_OP_VERSION_UNSET:
+ 	case ATH10K_FW_WMI_OP_VERSION_MAX:
+--- a/drivers/net/wireless/ath/ath10k/hw.h
++++ b/drivers/net/wireless/ath/ath10k/hw.h
+@@ -438,6 +438,7 @@ enum ath10k_hw_4addr_pad {
+ 
+ #define TARGET_10_4_NUM_QCACHE_PEERS_MAX	512
+ #define TARGET_10_4_QCACHE_ACTIVE_PEERS		50
++#define TARGET_10_4_QCACHE_ACTIVE_PEERS_PFC	35
+ #define TARGET_10_4_NUM_OFFLOAD_PEERS		0
+ #define TARGET_10_4_NUM_OFFLOAD_REORDER_BUFFS	0
+ #define TARGET_10_4_NUM_PEER_KEYS		2
+@@ -473,6 +474,7 @@ enum ath10k_hw_4addr_pad {
+ #define TARGET_10_4_VOW_CONFIG			0
+ #define TARGET_10_4_GTK_OFFLOAD_MAX_VDEV	3
+ #define TARGET_10_4_NUM_MSDU_DESC		(1024 + 400)
++#define TARGET_10_4_NUM_MSDU_DESC_PFC		2500
+ #define TARGET_10_4_11AC_TX_MAX_FRAGS		2
+ #define TARGET_10_4_MAX_PEER_EXT_STATS		16
+ #define TARGET_10_4_SMART_ANT_CAP		0
+--- a/drivers/net/wireless/ath/ath10k/wmi.c
++++ b/drivers/net/wireless/ath/ath10k/wmi.c
+@@ -4635,6 +4635,19 @@ static void ath10k_wmi_event_service_rea
+ 				       ar->max_num_vdevs;
+ 		ar->num_tids = ar->num_active_peers * 2;
+ 		ar->max_num_stations = TARGET_10_4_NUM_QCACHE_PEERS_MAX;
++	} else {
++		/* FIXME: HTT structures are allocated prior to receiving this
++		 * WMI event. However there are some assumptions regarding
++		 * max_num_pending_tx when peer-flow-ctrl is set. Perhaps HTT
++		 * allocation should be moved to after initial WMI event is
++		 * received. Ideally the entire firmware resource logic needs
++		 * to be cleaned up.
++		 */
++		if (test_bit(ATH10K_FW_FEATURE_PEER_FLOW_CONTROL,
++			     ar->fw_features)) {
++			ath10k_err(ar, "firmware with peer-flow-ctrl and without peer-caching is not supported\n");
++			return;
++		}
+ 	}
+ 
+ 	/* TODO: Adjust max peer count for cases like WMI_SERVICE_RATECTRL_CACHE

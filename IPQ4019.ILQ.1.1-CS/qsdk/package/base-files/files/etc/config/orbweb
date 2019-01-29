@@ -1,0 +1,5 @@
+# Orbweb configuration
+config orbweb_mqttd 'orbweb_mqttd'
+	option enable '0'
+	option url 'mqtt.ebuxreg01.asrock.com.tw'
+	option config '/etc/orbwebCloud.conf'

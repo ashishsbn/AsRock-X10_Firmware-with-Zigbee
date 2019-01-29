@@ -1,0 +1,32 @@
+#!/bin/sh
+. "/usr/share/libubox/jshn.sh"
+
+#sleep 60
+
+echo -e -n "Content-Type:application/json\r\n\r\n"
+json_init
+json_add_array 'learnings'
+while read line
+do
+        time=`date +%T`
+        mac=`echo $line | jq -r .mac`
+        model=`echo $line | jq -r .model | awk '{split($0,a,"_"); print a[1]}'`
+        device_info=`cat /etc/gizmo/action/deviceCode | grep $model -w -m 1`
+        type_f=`echo $device_info | awk '{print $3}'`
+        type=`echo $device_info | awk '{print $2}'`
+        if [ "$type" == "" ];then
+                #ubus call zstack remove \'{\"dev_addr\":\"$mac\"}\'
+                exit 1
+        fi
+        json_add_object
+        json_add_string 'time' $time
+        json_add_string 'type' $type
+        json_add_string 'type_f' $type_f
+        json_add_string 'mac' $mac
+        json_add_string 'id' $mac
+        json_add_string 'rssi' ''
+        json_close_object
+done < /etc/gizmo/action/learn_mode_list
+json_close_array
+json_dump
+#echo "{\"learnings\":[{\"time\":\"13:33:52\",\"type\": 78, \"type_f\":\"Lux Meter\", \"mac\":\"ZB:f34101\",\"id\":\"ZB:f34101\",\"rssi\":\"\"}]}"

@@ -1,0 +1,71 @@
+# QoS configuration for OpenWrt
+
+# INTERFACES:
+config interface wan
+	option classgroup  "Default"
+	option enabled      0
+	option upload       1024000
+
+config interface lan
+	option classgroup  "Default"
+	option enabled      0
+	option download     1024000
+
+# RULES:
+config default
+	option target       "Express"
+	option proto        "udp"
+	option pktsize      "-500"
+config reclassify
+	option target       "Priority"
+	option proto        "icmp"
+config default
+	option target       "Bulk"
+	option portrange    "1024-65535"
+
+
+# Don't change the stuff below unless you
+# really know what it means :)
+
+config classgroup "Default"
+	option classes      "Priority Express Normal Bulk"
+	option default      "Normal"
+
+
+config class "Priority"
+	option packetsize  400
+	option avgrate     30
+	option priority    20
+
+
+config class "Express"
+	option packetsize  1000
+	option avgrate     50
+	option priority    10
+
+config class "Normal"
+	option packetsize  1500
+	option packetdelay 100
+	option avgrate     15
+	option priority    5
+
+config class "Bulk"
+	option avgrate     5
+	option packetdelay 200
+
+config class "Priority_down"
+	option avgrate     30
+	option priority    20
+
+
+config class "Express_down"
+	option avgrate     50
+	option priority    10
+
+config class "Normal_down"
+	option avgrate     15
+	option priority    5
+
+config class "Bulk_down"
+	option avgrate     5
+	option packetdelay 200

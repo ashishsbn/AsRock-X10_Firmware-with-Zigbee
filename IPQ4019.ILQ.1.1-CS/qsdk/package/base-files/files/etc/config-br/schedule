@@ -1,0 +1,12 @@
+config schedule 'selfhealing'
+	option type trigger
+	option enable '0'
+	option count '1'
+	option c0 'sleep 70 && touch /etc/banner && reboot'
+	option schSun '000000000000000000000000'
+	option schMon '000000000000000000000000'
+	option schTue '000000000000000000000000'
+	option schWed '000000000000000000000000'
+	option schThu '000000000000000000000000'
+	option schFri '000000000000000000000000'
+	option schSat '000000000000000000000000'

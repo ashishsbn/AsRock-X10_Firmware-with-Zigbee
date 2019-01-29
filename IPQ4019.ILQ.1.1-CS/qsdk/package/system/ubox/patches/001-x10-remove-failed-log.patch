@@ -1,0 +1,13 @@
+--- a/kmodloader.c
++++ b/kmodloader.c
+@@ -550,8 +550,8 @@ static int main_insmod(int argc, char **
+ 	ret = insert_module(get_module_path(name), options);
+ 	free(options);
+ 
+-	if (ret)
+-		LOG("failed to insert %s\n", get_module_path(name));
++	//if (ret)
++		//LOG("failed to insert %s\n", get_module_path(name));
+ 
+ 	return ret;
+ }

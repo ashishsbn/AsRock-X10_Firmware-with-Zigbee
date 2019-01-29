@@ -1,0 +1,70 @@
+--- a/include/net/mac80211.h
++++ b/include/net/mac80211.h
+@@ -1737,6 +1737,8 @@ struct ieee80211_tx_control {
+  *
+  * @vif: &struct ieee80211_vif pointer from the add_interface callback.
+  * @sta: station table entry, %NULL for per-vif queue
++ * @qdepth: number of pending frames
++ * @qsize: number of pending bytes
+  * @tid: the TID for this queue (unused for per-vif queue)
+  * @ac: the AC for this queue
+  * @drv_priv: driver private area, sized by hw->txq_data_size
+@@ -1747,6 +1749,8 @@ struct ieee80211_tx_control {
+ struct ieee80211_txq {
+ 	struct ieee80211_vif *vif;
+ 	struct ieee80211_sta *sta;
++	int qdepth;
++	int qsize;
+ 	u8 tid;
+ 	u8 ac;
+ 
+--- a/net/mac80211/iface.c
++++ b/net/mac80211/iface.c
+@@ -986,6 +986,8 @@ static void ieee80211_do_stop(struct iee
+ 
+ 		ieee80211_purge_tx_queue(&local->hw, &txqi->queue);
+ 		atomic_set(&sdata->txqs_len[txqi->txq.ac], 0);
++		txqi->txq.qdepth = 0;
++		txqi->txq.qsize = 0;
+ 	}
+ 
+ 	if (local->open_count == 0)
+--- a/net/mac80211/sta_info.c
++++ b/net/mac80211/sta_info.c
+@@ -115,6 +115,8 @@ static void __cleanup_single_sta(struct
+ 
+ 			ieee80211_purge_tx_queue(&local->hw, &txqi->queue);
+ 			atomic_set(&sta->txqs_len[txqi->txq.ac], 0);
++			txqi->txq.qdepth = 0;
++			txqi->txq.qsize = 0;
+ 		}
+ 	}
+ 
+--- a/net/mac80211/tx.c
++++ b/net/mac80211/tx.c
+@@ -1276,6 +1276,9 @@ static void ieee80211_drv_tx(struct ieee
+ 
+ 	spin_lock_bh(&txqi->queue.lock);
+ 
++	txq->qdepth++;
++	txq->qsize += skb->len;
++
+ 	if (pubsta) {
+ 		pending = atomic_add_return(1, &sta->txqs_len[ac]);
+ 	} else {
+@@ -1336,6 +1339,15 @@ struct sk_buff *ieee80211_tx_dequeue(str
+ 	if (!skb)
+ 		goto out;
+ 
++	txq->qdepth--;
++	txq->qsize -= skb->len;
++
++	if (WARN_ON_ONCE(txq->qdepth < 0))
++		txq->qdepth = 0;
++
++	if (WARN_ON_ONCE(txq->qsize < 0))
++		txq->qsize = 0;
++
+ 	if (txq->sta) {
+ 		pending = atomic_sub_return(1, &sta->txqs_len[ac]);
+ 		sq = ac + sta->sta_id_off;

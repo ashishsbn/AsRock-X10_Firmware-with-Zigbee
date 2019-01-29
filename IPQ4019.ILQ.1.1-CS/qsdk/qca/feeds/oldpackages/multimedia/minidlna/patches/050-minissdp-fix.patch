@@ -1,0 +1,21 @@
+--- a/minissdp.c
++++ b/minissdp.c
+@@ -635,12 +635,12 @@ ProcessSSDPRequest(int s, unsigned short
+ 					break;
+ 				}
+ 			}
+-			if (n_lan_addr == i)
+-			{
+-				DPRINTF(E_DEBUG, L_SSDP, "Ignoring SSDP M-SEARCH on other interface [%s]\n",
+-					inet_ntoa(sendername.sin_addr));
+-				return;
+-			}
++			//if (n_lan_addr == i)
++			//{
++				//DPRINTF(E_DEBUG, L_SSDP, "Ignoring SSDP M-SEARCH on other interface [%s]\n",
++					//inet_ntoa(sendername.sin_addr));
++				//return;
++			//}
+ 			DPRINTF(E_DEBUG, L_SSDP, "SSDP M-SEARCH from %s:%d ST: %.*s, MX: %.*s, MAN: %.*s\n",
+ 				inet_ntoa(sendername.sin_addr),
+ 				ntohs(sendername.sin_port),

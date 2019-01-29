@@ -1,0 +1,423 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/ip_calc.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+var firewallInfo = null;
+var firewallOnOffList = ["Pingblockenabled", "PortScanenabled", "DosProtectenabled"];
+var unbindFirewallOnOffList = 0;
+
+function changeFirewall()
+{
+  var firewallEnabled = $('#Firewallenabled').val();
+
+  clearBlockMacList();
+  if (firewallEnabled == "OFF") {
+    for (i = 0; i < firewallOnOffList.length; i++) {
+      if ($('#' + firewallOnOffList[i]).val() == "ON") {
+        $('span#' + firewallOnOffList[i]).val("OFF");
+        $('span#' + firewallOnOffList[i]).trigger("click");
+      }
+      $('span#' + firewallOnOffList[i]).unbind('click');
+    }
+    unbindFirewallOnOffList = 1;
+
+    $('select#AccessBlock').attr("disabled", true);
+  }
+  else {
+    if (unbindFirewallOnOffList == 1) {
+      for (i = 0; i < firewallOnOffList.length; i++) {
+        $('span#' + firewallOnOffList[i]).click(function() {
+          changeOnOffStat(this);
+        });
+      }
+    }
+
+    for (i = 0; i < firewallOnOffList.length; i++) {
+      if (parseValueOfOnOff($('#' + firewallOnOffList[i]).val()) != firewallInfo[firewallOnOffList[i]]) {
+        if (firewallInfo[firewallOnOffList[i]] == "0") {
+          $('#' + firewallOnOffList[i]).val("OFF");
+        }
+        else {
+          $('#' + firewallOnOffList[i]).val("ON");
+        }
+        $('span#' + firewallOnOffList[i]).trigger("click");
+      }
+    }
+
+    $('select#AccessBlock').attr("disabled", false);
+	setBlockMacList();
+  }
+}
+
+function FirnewTable(id, width)
+{
+  var table = '', tableAttr = '';
+  
+  if (typeof width !== "undefined")
+    tableAttr += 'width="' + width + '" ';
+  else
+    tableAttr += 'width="70%"';
+  
+  table += '<td colspan="2" align="center" style="padding: 0px 0px 0px 20px">';
+  table += '<table ' + tableAttr + 'border="0" cellpadding="3" cellspacing="1" class="pixeltable" id="' + id + '">';
+  table += '<thead id="' + id + 'Head">';
+  table += '</thead>';
+  table += '<tbody id="' + id + 'Body">';
+  table += '</tbody>';
+  table += '</table></td>';
+  
+  return table;
+}
+
+function FirtableList(id, head, body, width)
+{
+  var table, tableHead, tableBody;
+  
+  $('#' + id).append(FirnewTable(id + 'Table', width));
+  table = $('#' + id + 'Table');
+  $('#' + id + 'TableHead').append(newTableHead(head));
+  $('#' + id + 'TableBody').append(newTableBody(body));
+}
+
+function FiraddList()
+{ 	
+  //var strmac = $('input[name="mac"]').val();
+
+  var getMacValue = $('select#AccessBlock :selected').text();
+
+  var table= document.getElementById("BlockList");
+  var rows =  table.getElementsByTagName('tr');
+  var tablelen = rows.length;
+  var  i, j, cells, gMacValue;
+  var strmac;
+   var strMacLowerCase,gMacLowerCase; 
+  
+  strmac = getMacValue.split("(");
+
+  for (i = 2, j = rows.length; i < j; ++i) {
+    cells = rows[i].getElementsByTagName('td');
+    if (!cells.length){ 
+        continue;
+	}
+    gMacValue = cells[0].innerHTML;
+	
+    if(strmac[0] == gMacValue)
+      return false;
+  }
+  
+  console.log("getMacValue = "+getMacValue+" strmac = "+strmac[0]);
+  
+  if(strmac[0].length == 17)
+  {
+    for (var i=0; i<strmac[0].length; i++)
+    {
+      if(i==2 || i==5 || i ==8 || i==11 || i==14)
+      {
+        if(strmac[0].charAt(i) != ":")
+
+        {
+          alert(InvalidMAC);
+          return false;
+        }
+      }
+      else
+      {
+        if ( (strmac[0].charAt(i) >= '0' && strmac[0].charAt(i) <= '9') || (strmac[0].charAt(i) >= 'a' && strmac[0].charAt(i) <= 'f') || (strmac[0].charAt(i) >= 'A' && strmac[0].charAt(i) <= 'F') )
+        continue;
+        alert(InvalidMAC);
+        return false;
+      }      
+    }
+  }  
+  else{
+    alert(InvalidMAC);
+    return false;
+  }
+  return true;
+}
+
+function addBlockMacTable(id,strmac)
+{
+  var body, bodyMac, bodyDelete;
+
+  if ((($('#' + id + 'TableBody').children().length) % 2) == 0) {
+    bodyMac = {"align" : "center", "bgcolor" : "#333333", "value" : strmac};
+    bodyDelete = {"classes" : id + "Del", "bgcolor" : "#333333", "isImage" : "1", "imgSrc" : "images/icon-.png"};
+  }
+  else {
+    bodyMac = {"align" : "center", "value" : strmac};
+    bodyDelete = {"classes" : id + "Del", "isImage" : "1", "imgSrc" : "images/icon-.png"};
+  }
+  body = [bodyMac, bodyDelete];
+  $('#' + id + 'TableBody').append(newTableBody(body));
+}
+
+function clearBlockMacList()
+{
+  $("#BlockListTable").find("tr:gt(1)").remove();
+}
+
+function setBlockMacList()
+{
+  var items = firewallInfo.BlockMacList.split("#");
+  var i;
+
+  for (i = 0; i < items.length; i++) {
+    if(items[i] != "") {
+      addBlockMacTable("BlockList", items[i]);
+    }
+  }
+}
+
+function setClientList()
+{
+  var items = firewallInfo.ClientList.split("#");
+  var i;
+
+  for (i = 0; i < items.length; i++){
+    var iData = items[i].split("|");
+    if (iData[0] != "" && iData[1] !== undefined) {
+	  var strListitem = iData[0] + "(" + iData[1] + ")";
+	  var strIndex = (i+1).toString();
+	  console.log("Listitem : "+strListitem+" Index : "+strIndex);
+	  $('select#AccessBlock').append("<option value=\""+strIndex+"\">"+strListitem+"</option>");
+    }
+  }
+}
+
+function setData(url) {
+  var argu, tmpArgu;
+  var table= document.getElementById("BlockList");
+  var rows = table.getElementsByTagName('tr');
+  var tablelen = rows.length;
+  var i, j, cells, nCount;
+  var gValue = "&BlockMacList";
+
+  var firewallEnabled = parseValueOfOnOff($('#Firewallenabled').val());
+  if (firewallEnabled == "1") {
+    argu = "Firewallenabled=1";
+    for (i = 0; i < firewallOnOffList.length; i++) {
+      tmpArgu = "&" + firewallOnOffList[i] + "=" + parseValueOfOnOff($('#' + firewallOnOffList[i]).val());
+      argu += tmpArgu;
+    }
+  }
+  else { 
+    argu = "Firewallenabled=0";
+    for (i = 0; i < firewallOnOffList.length; i++) {
+      tmpArgu = "&" + firewallOnOffList[i] + "=" + firewallInfo[firewallOnOffList[i]];
+      argu += tmpArgu;
+    }
+  }
+
+  tmpArgu = "&Upnpenabled=" + parseValueOfOnOff($('#Upnpenabled').val());
+  argu += tmpArgu;
+
+  nCount = 0;
+  if (firewallEnabled == "1") {
+    for (i = 2, j = rows.length; i < j; ++i) {
+      cells = rows[i].getElementsByTagName('td');
+      if (!cells.length) {
+        continue;
+      }
+      gValue += "#" + cells[0].innerHTML;
+      nCount++;
+    }
+  }
+  else {
+    var items = firewallInfo.BlockMacList.split("#");
+    nCount = items.length;
+    for (i = 0; i < items.length; i++) {
+      gValue+= "#" + items[i];
+    }
+  }
+  argu += "&NUM_Block_Mac=" + nCount;
+  argu += gValue;
+
+  console.log("argu="+argu);
+   
+  $.ajax({
+    url: url,
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log(result);
+    },
+    error : function() {
+      console.log("post " + url + " error");
+    }
+  });
+
+  return true;
+}
+
+$(document).ready(function() {
+  console.log("document ready!!!");
+
+  $('#firewallMenu').removeClass('menu');
+  $('#firewallMenu').addClass('mainmenu');
+
+  /* Empty category arrays */
+  emptyElementArrays();
+
+  switchOnOff(FirFirewall, "Firewallenabled", changeFirewall);
+  switchOnOff(FirWirelessPBlock, "Pingblockenabled");
+  switchOnOff(FirPortScanBlock, "PortScanenabled");
+  switchOnOff(FirDoSProtection, "DosProtectenabled");
+  switchOnOff(FirUpnp, "Upnpenabled");
+
+  var id, head, body;
+  id = "BlockList";
+  head = [{"desc" : AdvMACAddr, "width" : "20%","align" : "center"},
+          {"desc" : ParAddDelete, "width" : "10%","align" : "center"}];
+  body = [{"id" : "AccessBlock", "bgcolor" : "#333333", "align" : "center", "isSelect" : "1" }, 
+          {"id" : id + "Add", "bgcolor" : "#333333", "isImage" : "1", "imgSrc" : "images/icon+.png"}];
+  FirtableList(id, head, body,"55%");   
+ 
+  $('#' + id + 'Add').click(function() {
+    var id = "BlockList";
+    var getSelectData, macAddr;
+    var firewallEnabled = $('#Firewallenabled').val();
+
+    if (firewallEnabled == "OFF") {
+      return;
+    }
+
+    getSelectData = $('select#AccessBlock :selected').text();
+	macAddr = getSelectData.split("(");
+    if (FiraddList() == true) {
+      var body, bodyMac, bodyDelete;
+      if ((($('#' + id + 'TableBody').children().length) % 2) == 0) {
+        bodyMac = {"align" : "center", "bgcolor" : "#333333", "value" : macAddr[0]};
+        bodyDelete = {"classes" : id + "Del", "bgcolor" : "#333333", "isImage" : "1", "imgSrc" : "images/icon-.png"};
+      }
+      else {
+        bodyMac = {"align" : "center", "value" : macAddr[0]};
+        bodyDelete = {"classes" : id + "Del", "isImage" : "1", "imgSrc" : "images/icon-.png"};
+      }
+      body = [bodyMac, bodyDelete];
+      $('#' + id + 'TableBody').append(newTableBody(body));
+    }
+  });
+  $('#' + id + 'TableBody').on("click", '.' + id + 'Del', function() {
+   var firewall_enabled =  $('#Firewallenabled').val();
+  
+    if(firewall_enabled == "OFF")
+	   return;
+    $(this).closest('tr').remove();
+  });
+  
+  firewallInfo = getData("/f/getAdvfirewall");
+  if (firewallInfo != null){
+    if (firewallInfo.Firewallenabled == "0") {
+      $('#Firewallenabled').val("OFF");
+      if (firewallInfo.Upnpenabled == "0") {
+        $('#Upnpenabled').val("OFF");
+      }
+      else {
+        $('#Upnpenabled').val("ON");
+        $('span#Upnpenabled').trigger("click");
+      }
+    }
+    else {
+      $.each(firewallInfo, function(key, value) {
+        doAssignValues(key, value);
+      });
+      setBlockMacList();
+    }
+    setClientList();
+    changeFirewall();
+  }
+
+  $("#Apply").click(function(event) {
+    if (setData("/f/setAdvfirewall")) {
+      showWindow("waitWindow");
+      countdownWindow("rebootingDig");
+    }
+  });
+  $("#Cancel").click(function(event) {
+    console.log("cancel click...");
+    refresh();
+  });
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" align="center" valign="top">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                <script type="text/javascript">writeLeftMenu();</script> 
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top"><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td colspan="2" align="left"><h4><script>document.write(AdvFirewall);</script></h4></td>
+                </tr>
+                <tr>
+                   <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                </tr>
+                <tr id="Firewallenabled">
+                </tr>
+                <tr id="Pingblockenabled">
+                </tr>
+                <tr id="PortScanenabled">
+                </tr>
+                <tr id="DosProtectenabled">
+                </tr>
+                <tr id="Upnpenabled">
+                </tr>
+                <tr><td>&nbsp;</td></tr>
+                <tr><td>&nbsp;</td></tr>
+                <tr>
+                  <td colspan="2" align="left"><h4><script>document.write(FirewaFirewallSubTitle);</script></h4></td>
+                </tr>
+				<tr id="BlockList">
+                </tr>
+                <script type="text/javascript">writeApplyCancel();</script>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+</div>
+<!-- End Save for Web Slices -->
+<script type="text/javascript">
+  writeWindow("cover");
+  writeWindow("waitWindow");
+</script>
+</body>
+</html>

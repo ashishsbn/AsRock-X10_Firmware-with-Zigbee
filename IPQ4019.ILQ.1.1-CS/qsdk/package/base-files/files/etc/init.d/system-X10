@@ -1,0 +1,64 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2014 OpenWrt.org
+
+START=10
+USE_PROCD=1
+
+validate_system_section()
+{
+	uci_validate_section system system "${1}" \
+		'hostname:string:OpenWrt' \
+		'conloglevel:uinteger' \
+		'buffersize:uinteger' \
+		'timezone:string:UTC' \
+		'zonename:string' \
+		'op_mode:uinteger'
+}
+
+system_config() {
+	local cfg="$1"
+
+	local hostname conloglevel buffersize timezone zonename op_mode
+
+	validate_system_section "${1}" || {
+		echo "validation failed"
+		return 1
+	}
+
+	echo "$hostname" > /proc/sys/kernel/hostname
+	[ -z "$conloglevel" -a -z "$buffersize" ] || dmesg ${conloglevel:+-n $conloglevel} ${buffersize:+-s $buffersize}
+	echo "$timezone" > /tmp/TZ
+	[ -n "$zonename" ] && [ -f "/usr/share/zoneinfo/$zonename" ] && ln -s "/usr/share/zoneinfo/$zonename" /tmp/localtime
+
+	# apply timezone to kernel
+	date -k
+
+	# Not block ath02/ath12 in repeater mode
+	if [ "$op_mode" == "1" ] ; then
+		sysctl -w net.bridge.bridge-nf-block-guest=0
+	else
+		sysctl -w net.bridge.bridge-nf-block-guest=1
+	fi
+
+	# Block DNS reply (asrock.router) in AP mode
+	if [ "$op_mode" == "2" ] ; then
+		sysctl -w net.bridge.bridge-nf-block-dns-reply=1
+	else
+		sysctl -w net.bridge.bridge-nf-block-dns-reply=0
+	fi
+}
+
+reload_service() {
+	config_load system
+	config_foreach system_config system
+}
+
+service_triggers()
+{
+	procd_add_reload_trigger "system"
+	procd_add_validation validate_system_section
+}
+
+start_service() {
+	reload_service
+}

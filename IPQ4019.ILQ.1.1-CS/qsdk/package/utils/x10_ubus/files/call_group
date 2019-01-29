@@ -1,0 +1,23 @@
+#!/bin/sh
+HA_NO="20$1"
+device_list=`sqlite3 /etc/orbweb.db "select DEVICE_LIST from GROUPS where GROUP_ID = $1"`                                                                                            
+group_len=`echo $device_list | jq length`                                                                                                                                                   
+echo "$device_list $group_len"
+while [ $group_len -gt 0 ];do                                                                                                                                                               
+	dev_addr=`echo $device_list | jq --arg INDEX $group_len '.[$INDEX | tonumber - 1 ]' -r `                                                                                            
+	echo "Adding group device: $dev_addr in the scene"                                                                                                                                  
+	group_len=`expr $group_len - 1`                                                                                                                                                     
+	group_cmd=`echo {\"action\":1,\"dev_addr\":\"$dev_addr\",\"group_id\":$HA_NO,\"endpoint_id\":1}`
+	echo $group_cmd                                                                                                                                                                     
+	ubus call zstack group $group_cmd                                                                                                                                                   
+                                                                                                                                                                                                            
+	add_scene_cmd=`echo {\"dev_addr\":\"$dev_addr\",\"endpoint_id\":1,\"group_id\":$HA_NO,\"scene_id\":$HA_NO,\"device_type\":270,\"onoff\":$2,\"level\":0,\"color\":0}`
+	echo $add_scene_cmd                                                                                                                                                                 
+	ubus call zstack add_scene $add_scene_cmd                                                                                                                                           
+done                                                                                                                                                                                        
+
+scenes_cmd=`echo {\"action\":4,\"group_id\":$HA_NO,\"scene_id\":$HA_NO}`
+echo $scenes_cmd                                                                                                                                                                                    
+ubus call zstack scenes $scenes_cmd                                                                                                                                                                 
+/etc/gizmo/scene_triggered $HA_NO
+echo "Calling Group ID:$1 for action $2"

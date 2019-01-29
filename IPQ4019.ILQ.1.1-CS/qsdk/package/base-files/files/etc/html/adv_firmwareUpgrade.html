@@ -1,0 +1,328 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/ajaxfileupload.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+var nowFwVersion;
+var fwDownloading, fwUpgrading;
+
+function checkFW()
+{
+  $("#generalcheckUpdate").prop('disabled', true);
+  $("#upfile").prop('disabled', true);
+  $("#generalSelUpdate").prop('disabled', true);
+  $.ajax({
+    url: "/f/CheckFWupdate",
+    type: "GET",
+    success: function(result){
+      console.log("success");
+      console.log(result.enable);
+      var status = parseInt(result.enable);
+      if (status == 0) {
+        alert(PopFWMsg1);
+        refresh();
+      }
+      else if (status == -1) {
+        alert(PopFWMsg8);
+        refresh();
+      }
+      else {
+        document.getElementById("newFwVersion").innerHTML = result.checknewfw;
+        document.getElementById("nowFwVersion").innerHTML = nowFwVersion;
+        document.getElementById("askDownloadOrNot").style.display = "";
+        $("#generalcheckUpdate").prop('disabled', false);
+        $("#upfile").prop('disabled', false);
+        $("#generalSelUpdate").prop('disabled', false);
+      }
+    },
+    error: function(){
+      console.log("fail");
+      alert(PopFWMsg8);
+      refresh();
+    }
+  });
+}
+
+function checkFwDownload()
+{
+  $.ajax({
+    url: "/f/wizardGetFwDownload",
+    type: "GET",
+    success: function(result) {
+      if (parseInt(result.result) == -1) {
+        alert(DownloadWarn3);
+        refresh();
+      }
+      else {
+        if (parseInt(result.result) == 1) {
+          fwDownloading = 0;
+          sendFwUpgrade();
+        }
+        setTimeout(upgradeFwProcess, 3000);
+      }
+    },
+    error : function() {
+      console.log("get /f/wizardGetFwDownload error");
+      setTimeout(upgradeFwProcess, 3000);
+    }
+  });
+}
+
+function checkFwUpgrade()
+{
+  if (remainingTime <= 80) {
+    $.ajax({
+      url: "/f/wizardGetDefault",
+      type: "GET",
+      dataType: "jsonp",
+      crossDomain: false,
+      success: function(result) {
+        refresh();
+      },
+      error : function() {
+        console.log("get /f/wizardGetDefault error");
+        setTimeout(upgradeFwProcess, 3000);
+      }
+    });
+  }
+  else {
+    setTimeout(upgradeFwProcess, 3000);
+  }
+}
+
+function sendFwUpgrade()
+{
+  $.ajax({
+    url: "/f/wizardUpgradeFw",
+    type: "POST",
+    dataType: "json",
+    success: function(result) {
+      fwUpgrading = 1;
+    },
+    error : function() {
+      console.log("get /f/wizardUpgradeFw error");
+    }
+  });
+}
+
+function upgradeFwProcess()
+{
+  if (fwDownloading == 1) {
+    checkFwDownload();
+  }
+  else {
+    checkFwUpgrade();
+  }
+}
+
+function autoUpgradeFW()
+{
+  console.log("Upgrade FW ...");
+  waitTimeout = 360;
+  showWindow("waitWindow");
+  countdownWindow("fwUpgradeDig");
+  timerStop = 1;
+
+  fwDownloading = fwUpgrading = 0;
+  $.ajax({
+    url: "/f/wizardDownloadFw",
+    type: "POST",
+    dataType: "json",
+    success: function(result) {
+      console.log("get /f/wizardUpgradeFw success");
+    },
+    error : function() {
+      console.log("get /f/wizardUpgradeFw error");
+    }
+  });
+  fwDownloading = 1;
+  upgradeFwProcess();
+}
+
+function fileCheck()
+{
+  var oFile = document.getElementById('upfile');
+  if (oFile.value == "") {
+    alert(FWUpgradeWarn1);
+    return false;
+  }
+  return true;
+}
+
+function doLocalUpdate()
+{
+  if(!fileCheck())
+    return false;
+
+  waitTimeout = 300;
+  showWindow("waitWindow");
+  countdownWindow("fwUpgradeDig");
+
+  $.ajaxFileUpload({
+    url: '/f/uploadFile',
+    secureuri: false,
+    fileElementId: 'upfile',
+    dataType: 'json',
+    success: function (data, status) {
+      console.log("send file success! msg=" + data.msg);
+      updateFirmware();
+    },
+    error: function (data, status, e) {
+      console.log("ajaxFileUpload error");
+    }
+  });
+}
+
+$(document).ready(function(){  
+  isLoggedIn();
+
+  $('#administrationMenu').parent().removeClass('menu');
+  $('#administrationMenu').parent().addClass('mainmenu');
+  $('#administrationMenu').find('.submenu').addClass('show_menu');
+  $('.show_menu').show();
+  $('#adminFwUpgrade').removeClass('show_menu');
+  $('#adminFwUpgrade').removeClass('submenu');
+  $('#adminFwUpgrade').addClass('mainsubmenu');
+  $('#adminFwUpgrade').addClass('show_menu');
+
+  var devInfo = getData("/f/getDevSummary");
+  if (devInfo != null) {
+    $("#FirmwareVersion").text(devInfo.FirmwareVersion);
+    nowFwVersion = devInfo.FirmwareVersion;
+    $.ajax({
+      url: "/f/prepareUploade",
+      type: "POST",
+      dataType: "json",
+      success: function(result) {
+      },
+      error: function(result) {
+        console.log("get /f/prepareUploade error");
+      }
+    });
+  }
+  else {
+    console.log("devInfo is null");
+  }
+});
+
+function updateFirmware()
+{
+  $.ajax({
+    url:'/f/upgradeFW',
+    dataType: 'json',
+    success: function(data) {
+      console.log("started upgrade result=" + data.result);
+      if (data.result == "0") {
+        alert(PopFWMsg6);
+        refresh();
+      }
+      else {
+        timerStop = 1;
+      }
+    },
+    error: function(data) {
+      alert(PopFWMsg6);
+      refresh();
+    }
+  });
+}
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" cellspacing="0" cellpadding="0" border="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" align="center" valign="top">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                <script type="text/javascript">writeLeftMenu();</script>
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top"><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                    <tr>
+                      <td colspan="3" align="left"><h4><script>document.write(AdvFWUpgrade);</script></h4></td>
+                    </tr>
+                    <tr>
+                      <td width="35%" align="left" class="style6"><script>document.write(AdmFWProductModel);</script></td>
+                      <td width="30%" align="left" class="style6-2">X10</td>
+                      <td width="30%" align="left" class="style6-2"></td>
+                      <td width="5%" align="left" class="style6-2"></td>
+                    </tr>
+                    <tr>
+                      <td align="left" class="style6"><span><script>document.write(AdmFWVersion);</script></span></td>
+                      <td align="left" class="style6-2"><span id="FirmwareVersion"></span></td>
+                      <td align="left" class="style6-2">
+                        <input id="generalcheckUpdate" type="button" value="" style="width:100px" onclick="checkFW()">
+                        <script>document.getElementById("generalcheckUpdate").value=' ' + AdmFWCheckUpdate + ' '</script>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td align="left" class="style6"><span><script>document.write(AdmFWManuallyUpdate);</script></span></td>
+                      <td align="left" class="style6-2">
+                        <input type="file" size="8" id="upfile" name="upfile" style="width:250px">
+                      </td>
+                      <td align="left" class="style6-2">
+                        <input id="generalSelUpdate" type="button" value="" style="width:100px" onclick="doLocalUpdate();">
+                        <script type="text/javascript">document.getElementById("generalSelUpdate").value=' ' + AdmFWSelectUpdate + ' '</script>
+                      </td>
+                    </tr>
+                    <tr><td>&nbsp;</td></tr>
+                    <tr><td>&nbsp;</td></tr>
+                    <tr id="askDownloadOrNot" style="display:none">
+                      <td align="left" width="92%" class="style6" colspan="4">
+                        <span><script>document.write(RestoreInfo1);</script>&nbsp;</span><span id="nowFwVersion"></span><br>
+                        <span><script>document.write(RestoreInfo2);</script>&nbsp;</span><span id="newFwVersion"></span><br>
+                        <span><script>document.write(RestoreInfo3);</script></span>
+                        <script>
+                          document.write("<input id=\"generalYes\" type=\"button\" value=\" " + GeneralYes + " \" onclick=\"autoUpgradeFW()\">&nbsp;&nbsp;");
+                          document.write("<input id=\"generalNo\" type=\"button\"  value=\" " + GeneralNo + " \" onclick=\"document.location.assign('adv_firmwareUpgrade.html');\"");
+                        </script>
+                      </td>
+                    </tr>
+                  </table></td>
+                </tr>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img width="960" height="8" src="images/UI-new_11.png" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+</div>
+<!-- End Save for Web Slices -->
+  <script type="text/javascript">
+    writeWindow("cover");
+    writeWindow("waitWindow");
+  </script>
+</body>
+</html>

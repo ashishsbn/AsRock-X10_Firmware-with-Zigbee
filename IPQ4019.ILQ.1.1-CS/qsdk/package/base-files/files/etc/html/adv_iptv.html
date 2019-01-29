@@ -1,0 +1,201 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/ip_calc.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+function switchIgmpOnOff(swithThis)
+{
+  console.log("switch state :" + $('#igmponoff').val());
+}
+
+function setData(url) {
+  var argu;
+  var igmpenable = $('#igmponoff').val();
+  var portSelect = $('select#iptvstb').val();
+  
+  if(igmpenable  == "ON"){
+    argu = "&Igmpenabled=1";
+  }else { 
+    argu = "&Igmpenabled=0";
+  }
+  
+  argu+="&Portselect="+portSelect;
+  
+  console.log("argu="+argu);
+ /*  
+    $.ajaxSetup({
+    async: false
+  });
+*/
+  $.ajax({
+    url: url,
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+  //    console.log(result);
+    },
+    error : function() {
+ //     console.log("post " + url + " error");
+    }
+  });
+/*
+  $.ajaxSetup({
+    async: true
+  });
+  */
+   return true;
+}
+
+$(document).ready(function(){
+  isLoggedIn();
+
+  console.log("document ready!!!");
+  
+  /* Setup the Menu, expand the Wireless items */
+  $('#lanMenu').parent().removeClass('menu');
+  $('#lanMenu').parent().addClass('mainmenu');
+  $('#lanMenu').find('.submenu').addClass('show_menu');
+  $('.show_menu').show();
+  $('#lanIptv').removeClass('show_menu');
+  $('#lanIptv').removeClass('submenu');
+  $('#lanIptv').addClass('mainsubmenu');
+  $('#lanIptv').addClass('show_menu');
+
+  /* Empty category arrays */
+  emptyElementArrays();
+  /* Draw items */
+  switchOnOff(LANIGMPProxy, "igmponoff", switchIgmpOnOff);
+  var portList = {"0" : "None", "1" : "LAN1", "2" : "LAN1 & LAN2"};
+  select(LANIPTVSTBPort, "iptvstb", portList);
+
+  var IptvInfo = getData("/f/getAdvlaniptv");
+  if(IptvInfo != null){
+    $.each(IptvInfo,function(key,value){
+      if(key == "Igmpenabled"){
+        if(value == "0"){
+          $('#igmponoff').val("OFF");
+        }else{
+          $('#igmponoff').val("ON");
+          $('span#igmponoff').trigger("click");
+        }
+      }
+      if(key == "PortSelect"){
+        var portselect = parseInt(value);
+        console.log("portselect = " + portselect);
+        $('select#iptvstb').val(portselect);
+      }
+    });
+    if (IptvInfo.wanMacAddr != "") {
+      $('select#iptvstb').empty();
+      $('select#iptvstb').append("<option value=\"0\">None</option>");
+      $('select#iptvstb').val("0");
+    }
+  }
+
+  $('[id=Apply]').click(function(event) {
+    var IptvInfo = getData("/f/getAdvlaniptv");
+	var InternetConnected ;
+	var igmpenable = $('#igmponoff').val();
+	var breboot = 0;
+	
+    if(IptvInfo != null){
+	   $.each(IptvInfo,function(key,value){
+	     if(key == "internetConnected")
+		   InternetConnected = value;
+		 if(key == "PortSelect"){
+	       var portselect = parseInt(value);
+		   var setport = $('select#iptvstb').val(); 
+  	       console.log("portselect = " + portselect);
+		   if(setport != portselect)
+  		     breboot = 1;
+	      }
+	   });
+	}
+
+    if(setData("/f/setAdvlaniptv")){
+	  if(breboot){
+	    doReboot(); 
+	  }else{
+	    if(setData("/f/setAdvlaniptv")){
+          showWindow("waitWindow");
+          countdownWindow("waitingDig");
+	    }
+	  }
+	}
+  });
+ /* $("#Cancel").click(function(event) {*/
+  $("[id=Cancel]").click(function(event) {
+    console.log("cancel click...");
+    refresh();
+  });
+});
+
+ 
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" align="center" valign="top">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                <script type="text/javascript">writeLeftMenu();</script> 
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top"><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                 <tr>
+                  <td colspan="2" align="left"><h4><script>document.write(AdvIptv);</script></h4></td>
+                </tr>
+                <tr>
+                   <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                </tr>
+                <tr id="igmponoff">
+                </tr>
+                <tr id="iptvstb">
+                </tr>
+                <script type="text/javascript">writeApplyCancel();</script>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+</div>
+<!-- End Save for Web Slices -->
+<script type="text/javascript">
+  writeWindow("cover");
+  writeWindow("waitWindow");
+</script>
+</body>
+</html>

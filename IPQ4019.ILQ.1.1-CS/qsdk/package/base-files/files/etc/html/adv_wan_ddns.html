@@ -1,0 +1,409 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script> 
+<script type="text/javascript" src="includes/ip_calc.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+
+function ddns_lable(label,id)
+{
+	 $('#' + id).append("<td colspan=\"2\" align=\"left\" ><h4>" + label + "</h4></td>");
+}	
+
+function switchddnsOnOff(swithThis)
+{
+  var enabled = $('#ddnsclent').val();
+
+  console.log("switch state :" + $('#ddnsclent').val());
+  
+  
+  if(enabled =="OFF"){
+    $('input#ddnsrefresh').attr('disabled',true);
+	$('input#ddnshostname').attr('disabled',true);
+	$('input#ddnsusername').attr('disabled',true);
+	$('input#ddnspasswd').attr('disabled',true);
+	$('select#serviceprovider').attr('disabled',true);
+  }else{
+    $('input#ddnsrefresh').attr('disabled',false); 
+	$('input#ddnshostname').attr('disabled',false);
+	$('input#ddnsusername').attr('disabled',false);
+	$('input#ddnspasswd').attr('disabled',false);
+	$('select#serviceprovider').attr('disabled',false);
+  }
+}
+
+function gorefresh()
+{
+   var ddnsClientInfo ;
+   var ddnschecklabel = "CHECKING....";
+   
+   document.getElementById("DDnsStatusVal").innerHTML = ddnschecklabel.fontcolor("red");
+   
+  ddnsClientInfo = getData("/f/getddnsStatus");
+  if(ddnsClientInfo != null){
+    $.each(ddnsClientInfo,function(key,value){
+	   var mystatus ;
+      if(key == "Updatestatus"){
+	    console.log("DDNSstatus : "+value);
+		if(value == "SUCCESS"){
+		   mystatus = success;
+		   document.getElementById("DDnsStatusVal").innerHTML = mystatus.fontcolor("green");
+		}else if(value == "FAIL"){
+		   mystatus = failure;
+		   document.getElementById("DDnsStatusVal").innerHTML = mystatus.fontcolor("red");
+		}else
+		   document.getElementById("DDnsStatusVal").innerHTML = value;
+/*
+		else if(value == "FAIL")
+		   document.getElementById("DDnsStatusVal").innerHTML = mystatus.fontcolor("red");
+		else if(value.length == 0)
+			document.getElementById("DDnsStatusVal").innerHTML = mystatus.fontcolor("red");
+		else
+		   document.getElementById("DDnsStatusVal").innerHTML = mystatus.fontcolor("red");
+*/
+	  }
+	});
+  }
+}
+
+function setCharAt(str,index,chr) {
+   // if(index > str.length-1) return str;
+    return str.substr(0,index) + chr + str.substr(index+1);
+}
+
+function HexToChar(str,index,chr){
+  return str.substr(0,index) + chr + str.substr(index+3);
+}
+/*
+function SetMyPasswd(getpasswd){
+  var i ,j;
+  var getChar;
+  
+  console.log ("GetPasswd_1 : "+getpasswd);
+  
+  for(i = 0;i < getpasswd.length ; i++)
+  {
+    getChar = getpasswd.charAt(i);
+    if( getChar == '%'){
+	  var item = getpasswd.substr(i+1,2);
+	  var d = parseInt(item,16);
+	  var a = String.fromCharCode(d);
+	  getpasswd = HexToChar(getpasswd,i,a);
+//	  console.log ("GetPasswd ["+i+"] = "+getpasswd);
+	  //i+=2;
+	}
+  }
+  console.log ("GetPasswd : "+getpasswd);
+  $('input#ddnspasswd').val(getpasswd);
+}
+*/
+function changeddnsPskStat(maskChecked){
+
+  changePassStat("ddnspasswd", maskChecked);
+}
+
+function setData(url) {
+  var argu;
+  var provider = $('select#serviceprovider').val();
+  var ddnsenable = $('#ddnsclent').val();
+  var Strpasswd = $('input#ddnspasswd').val();
+  var outpasswd;
+  var j =0;
+/*  
+   var providerlist = ["DynDns.org","ZoneEdit.com","No-IP.com","3322.Org",
+                      "easyDNS.com","TZO.com","DynSTP.org"];
+*/ 
+  if(ddnsenable == "ON")
+    argu = "&ddnsenable=1";
+  else 
+    argu = "&ddnsenable=0";
+  
+  argu+="&ddnsserviceprovider="+provider;
+  argu+="&ddnshostname="+$('input#ddnshostname').val();
+  argu+="&ddnsusername="+$('input#ddnsusername').val();
+  
+  for(i=0;i<Strpasswd.length;i++){
+    var item = Strpasswd.charAt(i);
+	if( ( item >= '0' && item <= '9') || ( item >= 'a' && item <= 'z') || (item >= 'A' && item <= 'Z') ){
+	  continue;
+	}else{
+	  var a = Strpasswd.charCodeAt(i);
+	  var HexData = a.toString(16);
+	  
+	  console.log("password = "+a+"ASCII code = "+HexData);
+	  if(i<(Strpasswd.length-1)){
+	    var a1 = Strpasswd.charCodeAt(i)+1;
+		var HexData1 = a1.toString(16);
+		console.log("password+1 = "+a1+"ASCII code +1 = "+HexData1);
+		if((HexData == "5c")&&(HexData1 == "6e")){
+	      alert(DDNSWarn4);
+	      return;
+	    }
+	  }
+	  if((HexData == "22")||(HexData == "27")){
+	    alert(DDNSWarn4);
+	    return;
+	  }
+	  outpasswd = "%"+HexData;
+	  Strpasswd = setCharAt(Strpasswd,i,outpasswd);
+	  i+=2;
+	}
+  }
+  
+  console.log("passwd : "+Strpasswd);
+  
+  argu+="&ddnspassword="+Strpasswd;
+  
+  //argu+="&ddnspassword="+$('input#ddnspasswd').val();
+  
+  console.log("argu = " + argu);
+  
+  $.ajaxSetup({
+    async: false
+  });
+
+  $.ajax({
+    url: url,
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log(result);
+    },
+    error : function() {
+      console.log("post " + url + " error");
+    }
+  });
+
+  $.ajaxSetup({
+    async: true
+  });
+  
+  return true;
+}
+	
+$(document).ready(function() {
+  isLoggedIn();
+  console.log("document ready!!!");
+  
+  /* Empty category arrays */
+  emptyElementArrays();
+
+  $('#wanMenu').parent().removeClass('menu');
+  $('#wanMenu').parent().addClass('mainmenu');
+  $('#wanMenu').find('.submenu').addClass('show_menu');
+  $('.show_menu').show();
+  $('#wanDdns').removeClass('show_menu');
+  $('#wanDdns').removeClass('submenu');
+  $('#wanDdns').addClass('mainsubmenu');
+  $('#wanDdns').addClass('show_menu');
+
+  ddns_lable(WANDDNSClient, "wanddnsclent");
+  
+  switchOnOff(WANDDNSClient, "ddnsclent", switchddnsOnOff);
+  
+  var ddnsList = {"0" : "zoneedit.com", "1" : "no-ip.com", "2" : "mydns.jp","3" : "dyndns.org", "4" : "easydns.com"};
+ //var ddnsList = {"0" : "zoneedit.com", "1" : "no-ip.com", "2" : "mydns.jp","3" : "dyndns.org"};
+  
+  select(WANServiceProvider, "serviceprovider", ddnsList);
+  
+  text(WANHostName, "ddnshostname",null,0);
+  text(WANUserName, "ddnsusername",null,0);
+  $('input#ddnsusername').attr('size', 33);
+  $('input#ddnsusername').attr('maxlength', 32);
+  text(WANPassword, "ddnspasswd",null,1);
+  $('input#ddnspasswd').attr('size', 16);
+  $('input#ddnspasswd').attr('maxlength', 15);
+  $('input#ddnspasswd').after("&nbsp;<input type=\"checkbox\" id=\"ddnspskMask\" checked onclick=\"changeddnsPskStat(this.checked);\"><span>" + WirelessMask + "</span></input>");
+
+  label(DDnsWANIp,"ddnswanip");
+  label(DDnsDomain,"ddnsdomain");
+  label(DDnsStatus,"ddnstatus");
+  label(" ","ddnswanip_input");
+  button(" ", "ddnsrefresh", GeneralRefreshStatus, gorefresh)
+  
+
+  var ddnsClientInfo = getData("/f/getDdnsclient");
+  var ddnsClientWanIp,ddnsClientPubIp;
+  var ddnsOption;
+  if(ddnsClientInfo != null){
+  	$.each(ddnsClientInfo,function(key,value){
+	    var mystatus;
+  		if(key == "DDNSclentopt"){	
+		    ddnsOption = value;
+  			if(value == "enable"){
+  			  $('span#ddnsclent').trigger("click");
+  			  $('#ddnsclent').val("ON");
+  			}else{
+			  $('input#ddnsrefresh').attr('disabled',true);
+			  $('input#ddnshostname').attr('disabled',true);
+	          $('input#ddnsusername').attr('disabled',true);
+	          $('input#ddnspasswd').attr('disabled',true);
+			  $('select#serviceprovider').attr('disabled',true);
+			}
+  		}
+  		if(key == "DDNSserviceprovider"){
+  			var provideropt = parseInt(value);
+  			console.log("DDNSserviceprovider = " + provideropt);
+  		  $('select#serviceprovider').val(provideropt);
+  		}
+  		if((key=="DDNShostname")&&(value != " "))
+  		  $('input#ddnshostname').val(value);
+  		if((key=="DDNSusername")&&(value != " ") )
+  		  $('input#ddnsusername').val(value);
+
+  		if((key=="DDNSpassword")&&(value != " "))
+		   $('input#ddnspasswd').val(value);
+		 
+		 if(key == "DDNSpubip"){
+		   console.log("DDNSpubip : "+value);
+		   ddnsClientPubIp = value ;
+		 }
+
+		 if(key=="DDNSwanip"){
+		   console.log("ddnswanip : "+value);
+		   ddnsClientWanIp = value;
+		  
+		 }
+		 if(key=="DDNSdomain"){
+		   console.log("DDNSdomain : "+value);
+		   $('#ddnsdomain').append("<td align=\"left\" class=\"style6-2\" width=\"65%\">" + value + "</td>");
+		 }
+		 if(key=="DDNSstatus"){
+		   console.log("DDNSstatus : "+value);
+		    if(value == "SUCCESS"){
+			    mystatus = success;
+		       $('#ddnstatus').append("<td id=\"DDnsStatusVal\" align=\"left\" class=\"style6-2\" width=\"65%\"> "+ mystatus.fontcolor("green") + "</td>");
+		    }else if(value == "FAIL"){
+			    mystatus = failure;
+		       $('#ddnstatus').append("<td id=\"DDnsStatusVal\" align=\"left\" class=\"style6-2\" width=\"65%\"> "+ mystatus.fontcolor("red") + "</td>");
+		    }else
+			   $('#ddnstatus').append("<td id=\"DDnsStatusVal\" align=\"left\" class=\"style6-2\" width=\"65%\"> "+ value + "</td>");
+		 }
+		 
+  		 // $('input#ddnspasswd').val(value);
+  		  
+  	});
+	
+
+	 if((ddnsOption == "enable")&&(ddnsClientPubIp.length != 0)&&(ddnsClientWanIp != ddnsClientPubIp)){
+	       var PublicIp = "( public ip :"+ddnsClientPubIp+ ")";
+		   
+		  $('#ddnswanip').append("<td align=\"left\" class=\"style6-2\" width=\"65%\"> "+ ddnsClientWanIp + PublicIp.fontsize(3)+"</td>");
+	 }else
+  	       $('#ddnswanip').append("<td align=\"left\" class=\"style6-2\" width=\"65%\"> "+ ddnsClientWanIp + "</td>");
+  }
+  
+  $("#Apply").click(function(event){
+    var inputdomain = $('input#ddnshostname').val();
+    var username = $('input#ddnsusername').val();
+	var passwd = $('input#ddnspasswd').val();
+  
+    //if((username.length == 0) || (username.length > 15) ){
+	if(inputdomain.length == 0){
+	   alert(DDNSWarn1);
+	   $('input#ddnshostname').focus();
+	   return;
+	}
+	
+	if(username.length == 0){
+	   alert(DDNSWarn2);
+	   $('input#ddnsusername').focus();
+	  return ;
+	}
+	//if((passwd.length == 0) || (passwd.length > 32) ){
+	if(passwd.length == 0){
+	   alert(DDNSWarn3);
+	   $('input#ddnspasswd').focus();
+	  return ;
+	}
+  
+    if (setData("/f/setDdnsclient")) {
+      showWindow("waitWindow");
+      countdownWindow("waitingDig");
+	  }
+  });
+  
+  $("#Cancel").click(function(event) {
+    console.log("cancel click...");
+    refresh();
+  });  
+});
+
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" align="center" valign="top">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                <script type="text/javascript">writeLeftMenu();</script> 
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top"><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                <tr id="wanddnsclent">
+                </tr>
+                <tr>
+                   <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                </tr>
+                <tr id="ddnsclent">
+                </tr>
+                <tr id="serviceprovider">
+                </tr>
+                <tr id="ddnshostname">
+                </tr>
+                <tr id="ddnsusername">
+                </tr>
+                <tr id="ddnspasswd">
+                </tr>
+				<tr id="ddnswanip">
+                </tr>
+				<tr id="ddnsdomain">
+                </tr>
+				<tr id="ddnstatus">
+                </tr>
+				<tr id="ddnsrefresh">
+                </tr>
+                <script type="text/javascript">writeApplyCancel();</script>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+</div>
+<!-- End Save for Web Slices -->
+<script type="text/javascript">writeWindow("cover");</script>
+<script type="text/javascript">writeWindow("waitWindow");</script>
+</body>
+</html>

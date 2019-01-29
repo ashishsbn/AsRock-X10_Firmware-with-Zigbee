@@ -1,0 +1,41 @@
+#!/bin/sh
+# X10 generate OpenVPN certificate
+
+local key_index=$1
+echo "key index is ${key_index}"
+local key_dir="/etc/openvpn_keys/${key_index}/"
+local openvpn_dir="/etc/openvpn/"
+
+local client_all=$2
+local client_local=$3
+
+# server site
+rm -rf "${openvpn_dir}"*
+[ -f "${key_dir}"ca.crt ] && cp "${key_dir}"ca.crt "${openvpn_dir}"
+[ -f "${key_dir}"server.key ] && [ -f "${key_dir}"server.crt ] && cp "${key_dir}"server.* "${openvpn_dir}"
+[ -f "${key_dir}"dh1024.pem ] && cp "${key_dir}"dh1024.pem "${openvpn_dir}"
+
+# client site
+rm -rf "${client_all}"
+cp /etc/openvpn_keys/client_X10_ASRock_all.ovpn "${client_all}"
+echo "<ca>" >> "${client_all}"
+cat "${key_dir}"ca.crt >> "${client_all}"
+echo "</ca>" >> "${client_all}"
+echo "<cert>" >> "${client_all}"
+cat "${key_dir}"client.crt >> "${client_all}"
+echo "</cert>" >> "${client_all}"
+echo "<key>" >> "${client_all}"
+cat "${key_dir}"client.key >> "${client_all}"
+echo "</key>" >> "${client_all}"
+
+rm -rf "${client_local}"
+cp /etc/openvpn_keys/client_X10_ASRock_local.ovpn "${client_local}"
+echo "<ca>" >> "${client_local}"
+cat "${key_dir}"ca.crt >> "${client_local}"
+echo "</ca>" >> "${client_local}"
+echo "<cert>" >> "${client_local}"
+cat "${key_dir}"client.crt >> "${client_local}"
+echo "</cert>" >> "${client_local}"
+echo "<key>" >> "${client_local}"
+cat "${key_dir}"client.key >> "${client_local}"
+echo "</key>" >> "${client_local}"

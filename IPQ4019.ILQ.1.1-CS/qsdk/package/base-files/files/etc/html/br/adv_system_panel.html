@@ -1,0 +1,241 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/asrock-br.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+
+$(document).ready(function() {
+  isLoggedIn();
+  var dnsArray, width;
+
+  $('#administrationMenu').parent().removeClass('menu');
+  $('#administrationMenu').parent().addClass('mainmenu');
+  $('#administrationMenu').find('.submenu').addClass('show_menu');
+  $('.show_menu').show();
+  $('#adminPanel').removeClass('show_menu');
+  $('#adminPanel').removeClass('submenu');
+  $('#adminPanel').addClass('mainsubmenu');
+  $('#adminPanel').addClass('show_menu');
+
+  /* Empty category arrays */
+  emptyElementArrays();
+
+  /* Draw items */
+  width = 45;
+  font(AdminHardwareVersion, "hardwareVersion", width);
+  font(AdminFirmwareVersion, "firmwareVersion", width);
+  font(AdminMACAddr, "lanMac", width);
+  font(AdminIPAddr, "lanIp", width);
+  font(AdminDHCP, "dhcp", width);
+  font(AdvWirelessOMode, "opMode", width);
+  font(AdminMACAddr, "wanMac", width);
+  font(AdminIPAddr, "wanIp", width);
+  font(AdminConnectionType, "connectionType", width);
+  font(AdminSubnetMask, "wanSubnetMask", width);
+  font(AdminDNSServer, "dnsServer", width);
+  font(WANGateway, "gateway", width);
+  font(AdminWirelessSSID, "wifi0Ssid", width);
+  font(AdminRegion, "wifi0Region", width);
+  font(AdminChannel, "wifi0Channel", width);
+  font(AdminAuthMethod, "wifi0AuthMode", width);
+  font(AdminPassword, "wifi0Password", width);
+  font(AdminMACAddr, "wifi0Mac", width);
+  font(AdminWirelessSSID, "wifi1Ssid", width);
+  font(AdminRegion, "wifi1Region", width);
+  font(AdminChannel, "wifi1Channel", width);
+  font(AdminAuthMethod, "wifi1AuthMode", width);
+  font(AdminPassword, "wifi1Password", width);
+  font(AdminMACAddr, "wifi1Mac", width);
+  
+  /* Get the data and fill the DOM */
+  var brInfo = getData("/f/br/getBrInfo");
+
+  if (brInfo != null) {
+    brInfo.firmwareVersion = brInfo.firmwareVersion.toUpperCase();
+    /* Always show disabled in DHCP field */
+    brInfo.dhcp = Disabled;
+    brInfo.opMode = OpModeSTA;
+
+    /* Put the value into the DOM by key (id) */
+    $.each(brInfo, function(key, value) {
+      doAssignValues(key, "&nbsp;" + value);
+    });
+  }
+  else {
+    console.log("brInfo is null");
+  }
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+                <td>&nbsp;</td>
+                <td width="168">&nbsp;</td>
+                <td>&nbsp;</td>
+                <td width="736" align="center" valign="top">&nbsp;</td>
+              </tr>
+              <tr>
+                <td width="20">&nbsp;</td>
+                <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                  <script type="text/javascript">writeBrLeftMenu();</script> 
+                </table></td>
+                <td width="15">&nbsp;</td>
+                <td align="center" valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td colspan="2" align="left"><h4><script>document.write(AdvSystemPanel);</script></h4></td>
+                  </tr>
+                  <tr>
+                    <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                  </tr>
+                  <tr>
+                    <td align="center"><table border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td><img src="images/box01-L_01.png" width="365" height="21" /></td>
+                      </tr>
+                      <tr>
+                        <td align="center" background="images/box01-L_02.png"><table width="95%" border="0" cellspacing="3" cellpadding="0">
+                          <tr>
+                            <td colspan="2" align="left" class="style7"><script>document.write(AdminRouterInformation);</script></td>
+                          </tr>
+                          <tr id="hardwareVersion">
+                          </tr>
+                          <tr id="firmwareVersion">
+                          </tr>
+                          <tr id="lanMac">
+                          </tr>
+                          <tr id="lanIp">
+                          </tr>
+                          <tr id="dhcp">
+                          </tr>
+                          <tr id="opMode">
+                          </tr>
+                        </table></td>
+                      </tr>
+                      <tr>
+                        <td><img src="images/box01-L_03.png" width="365" height="22" /></td>
+                      </tr>
+                    </table></td>
+                    <td><table border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td><img src="images/box01-L_01.png" width="365" height="21" /></td>
+                      </tr>
+                      <tr>
+                        <td align="center" background="images/box01-L_02.png"><table width="95%" border="0" cellspacing="3" cellpadding="0">
+                          <tr>
+                            <td colspan="2" align="left" class="style7"><script>document.write(AdminInternetPort);</script></td>
+                          </tr>
+                          <tr id="wanMac">
+                          </tr>
+                          <tr id="wanIp">
+                          </tr>
+                          <tr id="connectionType">
+                          </tr>
+                          <tr id="wanSubnetMask">
+                          </tr>
+                          <tr id="dnsServer">
+                          </tr>
+                          <tr id="gateway">
+                          </tr>
+                        </table></td>
+                      </tr>
+                      <tr>
+                        <td><img src="images/box01-L_03.png" width="365" height="22" /></td>
+                      </tr>
+                    </table></td>
+                  </tr>
+                  <tr>
+                    <td align="center"><table border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td><img src="images/box01-L_01.png" width="365" height="21" /></td>
+                      </tr>
+                      <tr>
+                        <td align="center" background="images/box01-L_02.png"><table width="95%" border="0" cellspacing="3" cellpadding="0">
+                          <tr>
+                            <td colspan="2" align="left" class="style7"><script>document.write(AdminWireless2G);</script></td>
+                          </tr>
+                          <tr id="wifi0Ssid">
+                          </tr>
+                          <tr id="wifi0Region">
+                          </tr>
+                          <tr id="wifi0Channel">
+                          </tr>
+                          <tr id="wifi0AuthMode">
+                          </tr>
+                          <tr id="wifi0Password">
+                          </tr>
+                          <tr id="wifi0Mac">
+                          </tr>
+                        </table></td>
+                      </tr>
+                      <tr>
+                        <td><img src="images/box01-L_03.png" width="365" height="22" /></td>
+                      </tr>
+                    </table></td>
+                    <td><table border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td><img src="images/box01_01.png" width="365" height="21" /></td>
+                      </tr>
+                      <tr>
+                        <td align="center" background="images/box01-L_02.png"><table width="95%" border="0" cellspacing="3" cellpadding="0">
+                          <tr>
+                            <td colspan="2" align="left" class="style7"><script>document.write(AdminWireless5G);</script></td>
+                          </tr>
+                          <tr id="wifi1Ssid">
+                          </tr>
+                          <tr id="wifi1Region">
+                          </tr>
+                          <tr id="wifi1Channel">
+                          </tr>
+                          <tr id="wifi1AuthMode">
+                          </tr>
+                          <tr id="wifi1Password">
+                          </tr>
+                          <tr id="wifi1Mac">
+                          </tr>
+                        </table></td>
+                      </tr>
+                      <tr>
+                        <td><img src="images/box01-L_03.png" width="365" height="22" /></td>
+                      </tr>
+                    </table></td>
+                  </tr>
+                </table></td>
+              </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+</div>
+<!-- End Save for Web Slices -->
+<script type="text/javascript">
+  writeWindow("cover");
+  writeWindow("waitWindow");
+</script>
+</body>
+</html>

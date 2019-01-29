@@ -1,0 +1,5 @@
+uip.c:469:1:uip_add_rcv_nxt	16	static
+uip.c:177:1:uip_init	8	static
+uip.c:314:1:uip_unlisten	0	static
+uip.c:325:1:uip_listen	0	static
+uip.c:479:1:uip_process	40	static

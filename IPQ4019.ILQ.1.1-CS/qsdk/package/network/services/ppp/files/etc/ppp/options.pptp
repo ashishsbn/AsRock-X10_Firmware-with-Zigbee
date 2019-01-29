@@ -1,0 +1,13 @@
+noipdefault
+noauth
+nobsdcomp
+nodeflate
+idle 0
+#mppe required,no40,no56,stateless
+nomppe
+noipv6
+maxfail 0
+default-asyncmap
+debug
+logfd 2
+logfile /var/log/pptp.log

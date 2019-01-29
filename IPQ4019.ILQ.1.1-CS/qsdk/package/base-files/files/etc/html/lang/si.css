@@ -1,0 +1,424 @@
+/*
+
+	zenlike1.0 by nodethirtythree design
+	http://www.nodethirtythree.com
+
+*/
+
+*
+{
+	padding: 0em;
+	margin: 0em;
+}
+
+body
+{
+	font-family: Arial, Helvetica, sans-serif;
+	background:#404040;
+}
+
+p
+{
+	margin-bottom: 1em;
+	text-align: justify;
+	color: #FFF;
+	font-size: 13px;
+	line-height: 1.5;
+	margin: 5px 0px 5px 20px;
+	font-family: Arial, Helvetica, sans-serif;
+	font-weight: normal;
+}
+
+.style1 {
+	font-family: Arial, Helvetica, sans-serif;
+	color: #fff;
+	font-size: 12px;
+	font-weight: bold;
+	padding: 0px 0px 0px 10px;
+}
+.style2 {
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 13px;
+	padding: 0px 0px 0px 10px;
+	font-weight: bold;
+	color: #FF0;
+}
+.style3 {
+	font-family: Arial, Helvetica, sans-serif;
+	color: #fff;
+	font-size: 12px;
+}
+.style4 {
+	font-family: Arial, Helvetica, sans-serif;
+	color: #999;
+	font-size: 12px;
+	padding: 0px 0px 0px 10px;
+}
+.style5 {
+	font-family: Arial, Helvetica, sans-serif;
+	color: #FFF;
+	font-size: 14px;
+}
+.style6 {
+	font-family: Arial, Helvetica, sans-serif;
+	color: #FFF;
+	font-size: 16px;
+	padding: 0px 0px 0px 20px;
+}
+.style6-2 {
+	font-family: Arial, Helvetica, sans-serif;
+	color: #FFF;
+	font-size: 16px;
+	padding: 0px 0px 0px 0px;
+}
+.style7 {
+	font-family: Arial, Helvetica, sans-serif;
+	color: #FFF;
+	font-size: 14px;
+	padding: 5px 0px 5px 0px;
+}
+.style8 {
+	font-family: Arial, Helvetica, sans-serif;
+	color: #999;
+	font-size: 12px;
+}
+.style9 {
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 9px;
+	line-height:10px;
+	color: #666;
+	padding: 0px 0px 0px 50px;
+}
+.style12 {
+	font-size: 28px;
+	font-weight: bold;
+	color: #F00;
+	font-family: Arial, Helvetica, sans-serif;
+}
+.style13 {
+	font-family: Arial, Helvetica, sans-serif;
+	color: #000;
+	font-size: 18px;
+	padding:10px;
+}
+.style13:hover {
+	color:#F30;
+}
+
+
+a
+{
+	color: #999;
+	text-decoration: none;
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 13px;
+	font-weight: bold;
+}
+
+a:hover
+{
+	text-decoration: underline;
+	color: #F00;
+	font-family: Arial, Helvetica, sans-serif;
+}
+
+h1
+{
+	font-size: 33px;
+	font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+	color: #333;
+	margin-right:270px;
+}
+
+h2
+{
+	font-size: 20px;
+	padding-right: 28px;
+	font-family: Arial, Helvetica, sans-serif;
+	color: #333;
+	margin: 10px 0px 0px 5px;
+}
+
+h3 span
+{
+	font-weight: normal;
+}
+
+h3
+{
+	font-size: 15px;
+	padding-right: 28px;
+	font-family: Arial, Helvetica, sans-serif;
+	color: #666;
+	margin: 5px 0px 50px 50px;
+}
+
+h4
+{
+	font-size: 22px;
+	font-family: Arial, Helvetica, sans-serif;
+	margin: 10px 0px 5px 0px;
+	color: #FFF;
+}
+
+#nav li span {
+	/* style4 */
+	font-family: Arial, Helvetica, sans-serif;
+	color: #999;
+	font-size: 12px;
+	padding: 0px 0px 0px 10px;
+}
+
+#nav li.menu{
+	background: url("images/botton06-nol.png") no-repeat;
+	text-align: left;
+	width: 158px;
+	line-height:40px;		
+	list-style: none;
+}
+
+#nav li.menu:hover{
+	background: url("images/botton06-on.png") no-repeat;
+	text-align: left;
+	width: 158px;
+	line-height:40px;
+	list-style: none;
+}
+
+#nav li.menu:hover > span {
+	/* style1 */
+	font-family: Arial, Helvetica, sans-serif;
+	color: #fff;
+	font-size: 12px;
+	font-weight: bold;
+	padding: 0px 0px 0px 10px;
+}
+
+#nav li.mainmenu {
+	background: url("images/botton06-over.png") no-repeat;
+	text-align: left;
+	width: 158px;
+	line-height:40px;
+	list-style: none;
+}
+
+#nav li.mainmenu > span {
+	/* style1 */
+	font-family: Arial, Helvetica, sans-serif;
+	color: #fff;
+	font-size: 12px;
+	font-weight: bold;
+	padding: 0px 0px 0px 10px;
+}
+
+#nav li.mainsubmenu {
+	background-image: url("images/botton06-s-on_01.png");
+	background-repeat:repeat-y;
+	background-position:left;
+	list-style: none;
+	line-height:34px;
+}
+
+#nav li.mainsubmenu > span {
+	/* style1 */
+	font-family: Arial, Helvetica, sans-serif;
+	color: #fff;
+	font-size: 12px;
+	font-weight: bold;
+	padding: 0px 0px 0px 10px;
+}
+
+#nav li.submenu {
+	background-image: url("images/botton06-s-nol_01.png");
+	background-repeat:repeat-y;
+	background-position:left;
+	list-style: none;
+	line-height:34px;
+	display: none;
+}
+
+#nav li.submenu:hover {
+	background-image: url("images/botton06-s-on_01.png");
+	background-repeat:repeat-y;
+	background-position:left;
+	list-style: none;
+	line-height:34px;
+	display: none;
+}
+
+#nav li.submenu:hover > span {
+	/* style1 */
+	font-family: Arial, Helvetica, sans-serif;
+	color: #fff;
+	font-size: 12px;
+	font-weight: bold;
+	padding: 0px 0px 0px 10px;
+}
+
+.pixeltable {
+  border:1px solid #333;
+}
+
+/* KKHuang: Copy from G10 */
+#szlider {
+    width:100%;
+    height:15px;    
+    overflow:hidden;
+}
+#szliderbar {
+    width:0%;
+    height:13px;
+    background: url("images/bar.jpg");
+    /*padding-top: 2px;*/
+    /*left: 30px;*/
+    position:relative;
+    top:1px;
+    z-index:1;
+}
+#szazalek {    
+    width:340px;
+    height:15px;
+    background: url("images/bar-bg.jpg");
+    position:absolute;
+    z-index:0;
+}
+#precentNumber {
+    width:340px;
+    height:15px;
+    font-color: #000000;
+    font-size: 15px;
+    font-style: italic;
+    font-weight: bold;
+    text-align: center;
+    position:absolute;
+    z-index:2;
+}
+
+#szlider2 {
+    width:100%;
+    height:15px;    
+    overflow:hidden;
+}
+#szliderbar2 {
+    width:0%;
+    height:13px;
+    background: url("images/bar.jpg");
+    /*padding-top: 2px;*/
+    /*left: 30px;*/
+    position:relative;
+    top:1px;
+    z-index:1;
+}
+#szazalek2 {    
+    width:340px;
+    height:15px;
+    background: url("images/bar-bg.jpg");
+    position:absolute;
+    z-index:0;
+}
+#precentNumber2 {
+    width:340px;
+    height:15px;
+    font-color: #000000;
+    font-size: 15px;
+    font-style: italic;
+    font-weight: bold;
+    text-align: center;
+    position:absolute;
+    z-index:2;
+}
+
+.button1{
+	cursor: pointer;
+	background:url("images/botton02.png");
+	border:0;
+	width:119px;
+	height:39px;
+	color:#c0c0c0;
+	font-size: 12px;
+	font-weight: bold;
+	vertical-align:middle;
+	text-align: center;
+}
+.button1:hover{
+	cursor: pointer;
+	background:url("images/botton02-over.png");
+	border:0;
+	width:119px;
+	height:39px;
+	color:#c0c0c0;
+	font-size: 12px;
+	font-weight: bold;
+	vertical-align:middle;
+	text-align: center;
+}
+.button2{
+	cursor: pointer;
+	background:url("images/botton02-L-nol.png");
+	border:0;
+	width:230px;
+	height:31px;
+	color:#c0c0c0;
+	font-size: 12px;
+	font-weight: bold;
+	vertical-align:middle;
+	text-align: center;
+}
+.button2:hover{
+	cursor: pointer;
+	background:url("images/botton02-L-over.png");
+	border:0;
+	width:230px;
+	height:31px;
+	color:#c0c0c0;
+	font-size: 12px;
+	font-weight: bold;
+	vertical-align:middle;
+	text-align: center;
+}
+.styled-select {
+   width: 130px;
+   height: 26px;
+   overflow: hidden;
+   background-color: Transparent; 
+   border: 1;
+   padding-top: 1px;
+   padding-left: 5px;
+   border-radius: 0;
+   font-family: Arial, Helvetica, sans-serif;
+   color: #fff;
+   font-size: 12px;
+   font-weight: bold;
+   text-decoration: none;
+}
+
+/* Tooltip container */
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+/* Tooltip text */
+.tooltip .tooltiptext {
+    visibility: hidden;
+    height: 15px;
+    background-color: #646464;
+    color: #fff;
+    text-align: center;
+    padding: 5px 5px 5px 5px;
+    font-size: 12px;
+    word-break: keep-all;
+    white-space: nowrap;
+    border-radius: 6px;
+
+    /* Position the tooltip text - see examples below! */
+    position: absolute;
+    top: -25px;
+    left: -5px;
+    z-index: 1;
+}
+
+/* Show the tooltip text when you mouse over the tooltip container */
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+}

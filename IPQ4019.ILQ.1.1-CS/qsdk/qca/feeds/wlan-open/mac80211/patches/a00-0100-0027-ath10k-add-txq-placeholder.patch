@@ -1,0 +1,23 @@
+--- a/drivers/net/wireless/ath/ath10k/core.h
++++ b/drivers/net/wireless/ath/ath10k/core.h
+@@ -311,6 +311,10 @@ struct ath10k_peer {
+ 	struct ieee80211_key_conf *keys[WMI_MAX_KEY_INDEX + 1];
+ };
+ 
++struct ath10k_txq {
++	/* TBD */
++};
++
+ struct ath10k_sta {
+ 	struct ath10k_vif *arvif;
+ 
+--- a/drivers/net/wireless/ath/ath10k/mac.c
++++ b/drivers/net/wireless/ath/ath10k/mac.c
+@@ -7651,6 +7651,7 @@ int ath10k_mac_register(struct ath10k *a
+ 
+ 	ar->hw->vif_data_size = sizeof(struct ath10k_vif);
+ 	ar->hw->sta_data_size = sizeof(struct ath10k_sta);
++	ar->hw->txq_data_size = sizeof(struct ath10k_txq);
+ 
+ 	ar->hw->max_listen_interval = ATH10K_MAX_HW_LISTEN_INTERVAL;
+ 

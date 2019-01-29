@@ -1,0 +1,5 @@
+#!/bin/sh
+
+flock -x /var/ledlock -c "x10_leds_update_config $1 $2"
+
+exit 0

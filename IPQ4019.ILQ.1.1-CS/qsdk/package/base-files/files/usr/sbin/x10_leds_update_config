@@ -1,0 +1,78 @@
+#!/bin/sh
+
+if [ -f /var/led_config ]; then
+	RED_02_LED=`cat /var/led_config | cut -d":" -f1`
+	RED_01_LED=`cat /var/led_config | cut -d":" -f2`
+	BLUE_02_LED=`cat /var/led_config | cut -d":" -f3`
+	BLUE_01_LED=`cat /var/led_config | cut -d":" -f4`
+	AMBER_LED=`cat /var/led_config | cut -d":" -f5`
+	LORA_LED=`cat /var/led_config | cut -d":" -f6`
+	ZIGBEE_LED=`cat /var/led_config | cut -d":" -f7`
+	RED_LED=`cat /var/led_config | cut -d":" -f8`
+	BLUE_LED=`cat /var/led_config | cut -d":" -f9`
+fi
+
+case $1 in
+	"RED_02_LED")
+		RED_02_LED=$2
+		RED_LED=1002
+		;;
+	"RED_01_LED")
+		RED_01_LED=$2
+		RED_LED=1002
+		;;
+	"RED_LED")
+		RED_LED=$2
+		RED_01_LED=1002
+		RED_02_LED=1002
+		;;
+	"BLUE_02_LED")
+		BLUE_02_LED=$2
+		BLUE_LED=1002
+		;;
+	"BLUE_01_LED")
+		BLUE_01_LED=$2
+		BLUE_LED=1002
+		;;
+	"BLUE_LED")
+		BLUE_LED=$2
+		BLUE_01_LED=1002
+		BLUE_02_LED=1002
+		;;
+	"AMBER_LED")
+		AMBER_LED=$2
+		;;
+	"LORA_LED")
+		LORA_LED=$2
+		;;
+	"ZIGBEE_LED")
+		ZIGBEE_LED=$2
+		;;
+	"WAN_LED_STOP")
+		touch /var/stopwanled
+		BLUE_LED=1000
+		RED_LED=1000
+		;;
+	"WAN_LED_START")
+		rm -rf /var/stopwanled
+		BLUE_LED=1
+		;;
+	"INTERNET_CONNECTED")
+		BLUE_LED=1001
+		RED_LED=1000
+		;;
+	"INTERNET_CONNECTED_OFF")
+		BLUE_LED=1000
+		RED_LED=1000
+		;;
+	"ETH_DISCONNECTED")
+		BLUE_LED=1000
+		RED_LED=1001
+		;;
+	"WAN_DISCONNECTED")
+		BLUE_LED=1000
+		RED_LED=2
+		;;
+esac
+
+echo "$RED_02_LED:$RED_01_LED:$BLUE_02_LED:$BLUE_01_LED:$AMBER_LED:$LORA_LED:$ZIGBEE_LED:$RED_LED:$BLUE_LED" > /var/led_config

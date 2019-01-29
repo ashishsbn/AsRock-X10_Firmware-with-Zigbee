@@ -1,0 +1,119 @@
+--- a/miniupnpd.c
++++ b/miniupnpd.c
+@@ -1291,6 +1291,7 @@ main(int argc, char * * argv)
+ 
+ 	if(init(argc, argv, &v) != 0)
+ 		return 1;
++	get_X10_Description();
+ 	/* count lan addrs */
+ 	addr_count = 0;
+ 	for(lan_addr = lan_addrs.lh_first; lan_addr != NULL; lan_addr = lan_addr->list.le_next)
+--- a/upnpdescgen.c
++++ b/upnpdescgen.c
+@@ -150,7 +150,7 @@ static const struct XMLElt rootDesc[] =
+ /* 8 */
+ 	{"/manufacturerURL", ROOTDEV_MANUFACTURERURL},	/* optional */
+ 	{"/modelDescription", ROOTDEV_MODELDESCRIPTION}, /* recommended */
+-	{"/modelName", ROOTDEV_MODELNAME},	/* required */
++	{"/modelName", modelname/*ROOTDEV_MODELNAME*/},	/* required */
+ 	{"/modelNumber", modelnumber},
+ 	{"/modelURL", ROOTDEV_MODELURL},
+ 	{"/serialNumber", serialnumber},
+@@ -914,6 +914,39 @@ genXML(char * str, int * len, int * tmpl
+ 	}
+ }
+ 
++void get_X10_Description(void){
++	FILE *fp;
++	char data[32];
++	
++	memset(data,0,sizeof(data));
++	fp = popen("boardcfg -g HW_VER","r");
++	if(fp){
++		fgets(data, sizeof(data), fp);
++		if(strlen(data) > 0)
++			strcpy(modelnumber,data);
++	}
++	pclose(fp);
++	
++	memset(data,0,sizeof(data));
++	fp = popen("boardcfg -g MODEL","r");
++	if(fp){
++		fgets(data, sizeof(data), fp);
++		if(strlen(data) > 0)
++			strcpy(modelname,data);
++	}
++	pclose(fp);
++	
++	memset(data,0,sizeof(data));
++	fp = popen("boardcfg -g SN","r");
++	if(fp){
++		fgets(data, sizeof(data), fp);
++		if(strlen(data) > 0)
++			strcpy(serialnumber,data);
++	}
++	pclose(fp);
++	
++}
++
+ /* genRootDesc() :
+  * - Generate the root description of the UPnP device.
+  * - the len argument is used to return the length of
+--- a/upnpdescgen.h
++++ b/upnpdescgen.h
+@@ -62,6 +62,9 @@ genWANIPCn(int * len);
+ char *
+ genWANCfg(int * len);
+ 
++void
++get_X10_Description(void );
++
+ #ifdef ENABLE_L3F_SERVICE
+ char *
+ genL3F(int * len);
+--- a/upnpdescstrings.h
++++ b/upnpdescstrings.h
+@@ -11,9 +11,9 @@
+ 
+ /* strings used in the root device xml description */
+ /*#define ROOTDEV_FRIENDLYNAME		OS_NAME " router"*/
+-#define ROOTDEV_MANUFACTURER		OS_NAME
++#define ROOTDEV_MANUFACTURER		OS_NAME " Inc."
+ #define ROOTDEV_MANUFACTURERURL		OS_URL
+-#define ROOTDEV_MODELNAME			OS_NAME " router"
++/*#define ROOTDEV_MODELNAME			OS_NAME " router"*/
+ #define ROOTDEV_MODELDESCRIPTION	OS_NAME " router"
+ #define ROOTDEV_MODELURL			OS_URL
+ 
+--- a/upnpglobalvars.c
++++ b/upnpglobalvars.c
+@@ -41,6 +41,8 @@ char serialnumber[SERIALNUMBER_MAX_LEN]
+ 
+ char modelnumber[MODELNUMBER_MAX_LEN] = "1";
+ 
++char modelname[MODELNAME_MAX_LEN] = OS_NAME " router";
++
+ /* presentation url :
+  * http://nnn.nnn.nnn.nnn:ppppp/  => max 30 bytes including terminating 0 */
+ char presentationurl[PRESENTATIONURL_MAX_LEN];
+--- a/upnpglobalvars.h
++++ b/upnpglobalvars.h
+@@ -56,7 +56,8 @@ extern const char * pidfilename;
+ 
+ extern char uuidvalue[];
+ 
+-#define SERIALNUMBER_MAX_LEN (10)
++//#define SERIALNUMBER_MAX_LEN (10)
++#define SERIALNUMBER_MAX_LEN (16)
+ extern char serialnumber[];
+ 
+ #define MODELNUMBER_MAX_LEN (48)
+@@ -68,6 +69,8 @@ extern char presentationurl[];
+ #define FRIENDLY_NAME_MAX_LEN (64)
+ extern char friendly_name[];
+ 
++#define MODELNAME_MAX_LEN (64)
++extern char modelname[];
+ /* UPnP permission rules : */
+ extern struct upnpperm * upnppermlist;
+ extern unsigned int num_upnpperm;

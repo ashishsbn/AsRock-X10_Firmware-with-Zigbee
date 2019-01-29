@@ -1,0 +1,67 @@
+#!/bin/sh
+
+. /usr/share/libubox/jshn.sh
+. /lib/config/uci.sh
+
+local pppoe_error=0
+local old_wan_status=0 # 0 is disconnected, 1 is connected
+
+while [ 1 ]
+do
+	local wan_type=`uci get network.wan.proto`
+
+	if [ $wan_type == "pppoe" ]; then
+		local pppoe_wan=`ifconfig pppoe-wan`
+		local pppoe_ipv4=`ifconfig pppoe-wan | grep "inet addr"`
+
+		if [ ! -z "$pppoe_wan" ] && [ -z "$pppoe_ipv4" ]; then
+			pppoe_error=`eval expr $pppoe_error + 1`
+		else
+			pppoe_error=0
+		fi
+
+		if [ $pppoe_error -ge 8 ]; then
+			echo "pppoe_wan can't get IP address, force reload" > /dev/console
+			ubus call network.interface.wan down
+			sleep 1
+			ubus call network.interface.wan up
+			pppoe_error=0
+		fi
+	fi
+
+	if [ -f /tmp/wanconnected ]; then
+		AUTO_TIME_ZONE=$(uci_get system @system[0] autotimezone 0)
+		if [ $AUTO_TIME_ZONE ==  1 ]; then
+			rm /tmp/timezone
+			wget http://ipapi.co/timezone/ -q -O /tmp/timezone
+			if [ -s /tmp/timezone ]; then
+				city=`cat /tmp/timezone`
+				timezone=`grep $city /etc/tz.tab | awk -F"\t"  '{print $2}'`
+				echo "Detect City $city & timezone $timezone..." > /dev/console
+				if [ ! -z "$city" ] && [ ! -z "$timezone" ]; then
+					uci_set system @system[0] city "$city"
+					uci_set system @system[0] timezone "$timezone"
+					uci_set system @system[0] autotimezone 0
+					uci_commit system
+					reload_config
+				fi
+			fi
+		fi
+	fi
+	
+	# restart the orbwebm2m when WAN is re-connected
+	if [ -f /tmp/wanconnected ]; then
+		if [ $old_wan_status == 0 ]; then
+			logger -t warning orbweb restart - x10_wan_mon
+			/etc/init.d/orbweb restart
+			logger -t warning orbwebm2m restart - x10_wan_mon
+			/etc/init.d/orbwebm2m restart
+		fi
+		old_wan_status=1
+	else
+		old_wan_status=0
+	fi
+
+	sleep 1
+done
+

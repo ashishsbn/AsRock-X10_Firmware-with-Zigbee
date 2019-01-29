@@ -1,0 +1,29 @@
+--- a/configure
++++ b/configure
+@@ -7844,22 +7844,22 @@ _ACEOF
+ 
+ 
+ cat >>confdefs.h <<_ACEOF
+-#define ROOTDEV_MANUFACTURER "Justin Maggard"
++#define ROOTDEV_MANUFACTURER "ASRock Inc."
+ _ACEOF
+ 
+ 
+ cat >>confdefs.h <<_ACEOF
+-#define ROOTDEV_MANUFACTURERURL "http://www.netgear.com/"
++#define ROOTDEV_MANUFACTURERURL "http://www.asrock.com/"
+ _ACEOF
+ 
+ 
+ cat >>confdefs.h <<_ACEOF
+-#define ROOTDEV_MODELNAME "Windows Media Connect compatible (MiniDLNA)"
++#define ROOTDEV_MODELNAME "ASRock Media Server"
+ _ACEOF
+ 
+ 
+ cat >>confdefs.h <<_ACEOF
+-#define ROOTDEV_MODELDESCRIPTION "MiniDLNA on " OS_NAME
++#define ROOTDEV_MODELDESCRIPTION "ASRock router"
+ _ACEOF
+ 
+ 

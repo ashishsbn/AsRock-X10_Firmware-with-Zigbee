@@ -1,0 +1,73 @@
+odhcpd: Support dhcpv6 IP Pool
+
+This patch adds "startv6" and "limitv6" parameters to set dhcpv6 IP Pool.
+
+From: Bryce_Chen <Bryce1_Chen@pegatroncorp.com>
+
+--- a/src/dhcpv6-ia.c
++++ b/src/dhcpv6-ia.c
+@@ -531,10 +531,14 @@
+ 		seed += assign->clid_data[i];
+ 	srand(seed);
+ 
+-	// Try to assign up to 100x
++	uint32_t dhcpv6_start = iface->dhcpv6_start;
++	uint32_t dhcpv6_end = iface->dhcpv6_end;
++	syslog(LOG_WARNING, "assign_na start %d end %d", dhcpv6_start, dhcpv6_end);
++
++	// Try to assign between dhcpv6_start & dhcpv6_end
+ 	for (size_t i = 0; i < 100; ++i) {
+ 		uint32_t try;
+-		do try = ((uint32_t)rand()) % 0x0fff; while (try < 0x100);
++		do try = ((uint32_t)rand()) % 0xffff; while ((try > dhcpv6_end) || (try < dhcpv6_start));
+ 
+ 		struct dhcpv6_assignment *c;
+ 		list_for_each_entry(c, &iface->ia_assignments, head) {
+
+--- a/src/config.c
++++ b/src/config.c
+@@ -45,6 +45,8 @@
+ 	IFACE_ATTR_PD_CER,
+ 	IFACE_ATTR_NDPROXY_ROUTING,
+ 	IFACE_ATTR_NDPROXY_SLAVE,
++	IFACE_ATTR_STARTV6,
++	IFACE_ATTR_LIMITV6,
+ 	IFACE_ATTR_MAX
+ };
+ 
+@@ -78,6 +80,8 @@
+ 	[IFACE_ATTR_RA_MAXINTERVAL] = { .name = "ra_maxinterval", .type = BLOBMSG_TYPE_INT32 },
+ 	[IFACE_ATTR_NDPROXY_ROUTING] = { .name = "ndproxy_routing", .type = BLOBMSG_TYPE_BOOL },
+ 	[IFACE_ATTR_NDPROXY_SLAVE] = { .name = "ndproxy_slave", .type = BLOBMSG_TYPE_BOOL },
++	[IFACE_ATTR_STARTV6] = { .name = "startv6", .type = BLOBMSG_TYPE_INT32 },
++	[IFACE_ATTR_LIMITV6] = { .name = "limitv6", .type = BLOBMSG_TYPE_INT32 },
+ };
+ 
+ static const struct uci_blob_param_info iface_attr_info[IFACE_ATTR_MAX] = {
+@@ -549,6 +553,12 @@
+ 	if ((c = tb[IFACE_ATTR_NDPROXY_SLAVE]))
+ 		iface->external = blobmsg_get_bool(c);
+ 
++	if ((c = tb[IFACE_ATTR_STARTV6])) 
++		iface->dhcpv6_start = blobmsg_get_u32(c);
++
++	if ((c = tb[IFACE_ATTR_LIMITV6])) 
++		iface->dhcpv6_end = iface->dhcpv6_start + blobmsg_get_u32(c);
++
+ 	return 0;
+ 
+ err:
+
+--- a/src/odhcpd.h
++++ b/src/odhcpd.h
+@@ -168,6 +168,10 @@
+ 	size_t upstream_len;
+ 
+ 	char *filter_class;
++
++	// DHCPv6 IP Pool
++	uint32_t dhcpv6_start;
++	uint32_t dhcpv6_end;
+ };
+ 
+ extern struct list_head interfaces;

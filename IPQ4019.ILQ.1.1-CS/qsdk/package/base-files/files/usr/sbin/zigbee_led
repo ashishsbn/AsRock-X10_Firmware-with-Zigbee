@@ -1,0 +1,49 @@
+#!/bin/sh
+
+PAIR()
+{
+while [ 1 ]
+do
+echo "0" > /sys/class/gpio/gpio66/value
+usleep 1000000
+echo "1" > /sys/class/gpio/gpio66/value
+usleep 1000000
+done
+}
+
+PAIR_DONE()
+{
+echo "1" > /sys/class/gpio/gpio66/value
+usleep 5000000
+echo "0" > /sys/class/gpio/gpio66/value
+}
+
+ERROR()
+{
+while [ 1 ]
+do
+echo "0" > /sys/class/gpio/gpio66/value
+usleep 100000
+echo "1" > /sys/class/gpio/gpio66/value
+usleep 100000
+done
+}
+
+FINISH()
+{
+echo "0" > /sys/class/gpio/gpio66/value
+}
+
+echo "COMMAND= $1"
+if [ "$1" == "pair" ]; then
+PAIR
+fi
+if [ "$1" == "pair_done" ]; then
+PAIR_DONE
+fi
+if [ "$1" == "error" ]; then
+ERROR
+fi
+if [ "$1" == "finish" ]; then
+FINISH
+fi

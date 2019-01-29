@@ -1,0 +1,24 @@
+#!/bin/sh
+# Copyright (C) 2006 OpenWrt.org
+# Copyright (C) 2010 Vertical Communications
+
+do_mount_root() {	
+	#mount_root
+	mkdir /tmp/overlay
+	mount -n -t jffs2 /dev/mtdblock10 -o rw,noatime /tmp/overlay
+	mount -n /tmp/overlay -o noatime,move /overlay
+	mount -n -t overlayfs overlayfs:/overlay -o rw,noatime,lowerdir=/etc,upperdir=/overlay /mnt
+	mount -n /mnt -o noatime,move /etc
+
+	boot_run_hook preinit_mount_root
+	[ -f /sysupgrade.tgz ] && {
+		echo "- config restore -"
+		cd /
+		mv sysupgrade.tgz /tmp
+		tar xzf /tmp/sysupgrade.tgz
+		rm -f /tmp/sysupgrade.tgz
+		sync
+	}
+}
+
+[ "$INITRAMFS" = "1" ] || boot_hook_add preinit_main do_mount_root

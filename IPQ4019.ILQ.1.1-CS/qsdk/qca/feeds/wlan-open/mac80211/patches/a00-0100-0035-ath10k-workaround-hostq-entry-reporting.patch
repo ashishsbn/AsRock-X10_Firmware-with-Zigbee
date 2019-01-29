@@ -1,0 +1,11 @@
+--- a/drivers/net/wireless/ath/ath10k/htt_tx.c
++++ b/drivers/net/wireless/ath/ath10k/htt_tx.c
+@@ -70,7 +70,7 @@ static void __ath10k_htt_tx_txq_recalc(s
+ 	tid = txq->tid;
+ 	bit = BIT(peer_id % 32);
+ 	idx = peer_id / 32;
+-	count = ath10k_htt_tx_txq_calc_size(txq->qsize);
++	count = ath10k_htt_tx_txq_calc_size(txq->qsize * 2);
+ 
+ 	if (unlikely(peer_id >= ar->htt.tx_q_state.num_peers) ||
+ 	    unlikely(tid >= ar->htt.tx_q_state.num_tids)) {

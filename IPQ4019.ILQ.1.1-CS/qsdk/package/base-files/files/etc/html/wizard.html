@@ -1,0 +1,1325 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/wizard.js"></script>
+<script type="text/javascript" src="includes/base64.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+var min_length = 5;
+var wanCountdown = 20, wanData = null, wanConnected = 0;
+var fwData = null;
+var wirelessData = null;
+var lanIpAddr = null;
+
+function changePasswordMask(id, maskChecked)
+{
+  changePassStat(id, maskChecked);
+}
+
+function copyWirelessSettings(checked)
+{
+  if (checked) {
+    $('input#ssid5g').val($('input#ssid2g').val() + '_5G');
+    $('input#psk5g').val($('input#psk2g').val());
+  }
+}
+
+function changePassword()
+{
+  var argu;
+  
+  if ($('input#name').val().length < min_length) {
+    alert(PasswordWarn1);
+    return false;
+  }
+  
+  if ($('input#password').val().length < min_length) {
+    alert(PasswordWarn3);
+    return false;
+  }
+    
+  if ($('input#passwordConfirm').val().length < min_length) {
+    alert(PasswordWarn4);
+    return false;
+  }
+  
+  if ($('input#password').val() != $('input#passwordConfirm').val()) {
+    alert(PasswordWarn6);
+    return false;
+  }
+  
+  if ($('input#password').val() == "admin") {
+    alert(SetPasswordAlert);
+    return false;
+  }
+  
+  argu = "name=" + encodeURIComponent($('input#name').val());
+  argu += "&password=" + encodeURIComponent(Base64.encode($('input#password').val()));
+  
+  $.ajax({
+    url:'/f/wizardSetPassword',
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log("post /f/wizardSetPassword success");
+    },
+    error : function() {
+      console.log("post /f/wizardSetPassword error");
+    }
+  });
+  
+  return true;
+}
+
+function getWanSettings(proto)
+{
+  var argu;
+  
+  argu = "proto=" + proto
+  
+  $.ajax({
+    url: "/f/wizardGetWan",
+    type: "GET",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      if (result.proto == "pppoe") {
+        $('input#pppoeUserName').val(decodeURIComponent(result.username));
+        $('input#pppoePassword').val(decodeURIComponent(result.password));
+      }
+      else if (result.proto == "static") {
+        $('input#staticIpAddr').val(result.ipAddr);
+        $('input#staticSubnet').val(result.subnet);
+        $('input#staticGateway').val(result.gateway);
+        $('input#staticDns1').val(result.dns1);
+        $('input#staticDns2').val(result.dns2);
+        lanIpAddr = result.lanIpAddr;
+      }
+      else if (result.proto == "pptp") {
+        $('input#pptpUserName').val(decodeURIComponent(result.username));
+        $('input#pptpPassword').val(decodeURIComponent(result.password));
+        $('input#pptpServer').val(result.server);
+        if (parseInt(result.dynamic) == 0) {
+          $('input#pptpDynamicIpAddr').prop("checked", false);
+        }
+        else {
+          $('input#pptpDynamicIpAddr').prop("checked", true);
+        }
+        $('input#pptpIpAddr').val(result.ipAddr);
+        $('input#pptpSubnet').val(result.subnet);
+        $('input#pptpGateway').val(result.gateway);
+      }
+      else if (result.proto == "l2tp") {
+        $('input#l2tpUserName').val(decodeURIComponent(result.username));
+        $('input#l2tpPassword').val(decodeURIComponent(result.password));
+        $('input#l2tpServer').val(result.server);
+        if (parseInt(result.dynamic) == 0) {
+          $('input#l2tpDynamicIpAddr').prop("checked", false);
+        }
+        else {
+          $('input#l2tpDynamicIpAddr').prop("checked", true);
+        }
+        $('input#l2tpIpAddr').val(result.ipAddr);
+        $('input#l2tpSubnet').val(result.subnet);
+        $('input#l2tpGateway').val(result.gateway);
+      }
+    },
+    error : function() {
+      console.log("get /f/wizardGetWan error");
+    }
+  });
+}
+
+function changeWanSettings(argu, hideDiv)
+{
+  $.ajax({
+    url: "/f/wizardSetWan",
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      goToAutoDetect();
+    },
+    error : function() {
+      console.log("post /f/wizardSetWan error");
+    }
+  });
+  
+  $('#' + hideDiv).hide();
+  showAutoDetect();
+}
+
+function changePptpIpSettings(checked)
+{
+  if (checked) {
+    $('#pptpIpAddr').attr('disabled', 'disabled');
+    $('#pptpSubnet').attr('disabled', 'disabled');
+    $('#pptpGateway').attr('disabled', 'disabled');
+  }
+  else {
+    $('#pptpIpAddr').removeAttr('disabled');
+    $('#pptpSubnet').removeAttr('disabled');
+    $('#pptpGateway').removeAttr('disabled');
+  }
+}
+
+function changeL2tpIpSettings(checked)
+{
+  if (checked) {
+    $('#l2tpIpAddr').attr('disabled', 'disabled');
+    $('#l2tpSubnet').attr('disabled', 'disabled');
+    $('#l2tpGateway').attr('disabled', 'disabled');
+  }
+  else {
+    $('#l2tpIpAddr').removeAttr('disabled');
+    $('#l2tpSubnet').removeAttr('disabled');
+    $('#l2tpGateway').removeAttr('disabled');
+  }
+}
+
+function setWanSettings()
+{
+  var argu, wanType;
+  
+  wanType = $('input[id=wanType]:checked').val();
+  
+  if (wanType == "dhcp") {
+    argu = "proto=" + wanType;
+    changeWanSettings(argu, "wanSettings");
+    return;
+  }
+  else {
+    $('#wanSettings').hide();
+    if (wanType == "static") {
+      $('#wanStaticSettings').show();
+    }
+    else if (wanType == "pppoe") {
+      $('#wanPppoeSettings').show();
+    }
+    else if (wanType == "pptp") {
+      $('#wanPptpSettings').show();
+    }
+    else if (wanType == "l2tp") {
+      $('#wanL2tpSettings').show();
+    }
+  }
+  getWanSettings(wanType);
+}
+
+function checkWanStatus()
+{
+  if (parseInt(wanData.status) == 1) {
+    wanConnected = 1;
+    hideAutoDetect();
+    goToCheckFirmware();
+  }
+}
+
+function notifyWanError()
+{
+  console.log("Cannot connect to Internet (" + wanData.proto + ")");
+  if (wanData.proto == "dhcp" || wanData.proto == "static") {
+    $('#callIsp').hide();
+    $('#rebootModem').show();
+  }
+  else {
+    $('#rebootModem').hide();
+    $('#callIsp').show();
+  }
+  showWindow("noWanWindow");
+}
+
+function getWanStatus()
+{
+  wanCountdown--;
+  if (wanCountdown < 0) {
+    notifyWanError();
+    return;
+  }
+  else if (wanConnected == 0){
+    if ((wanCountdown < 10) && (wanCountdown % 3 == 0)) {
+      $.ajax({
+        url: "/f/wizardGetWanStatus",
+        type: "GET",
+        success: function(result) {
+          wanData = result;
+          checkWanStatus();
+        },
+        error : function() {
+          console.log("get /f/wizardGetWanStatus error");
+          wanData = null;
+        }
+      });
+    }
+    
+    setTimeout(getWanStatus, 1000);
+  }
+}
+
+function showAutoDetect()
+{
+   $('#autoDetect').show();
+}
+
+function hideAutoDetect()
+{
+   $('#autoDetect').hide();
+}
+
+function goToAutoDetect()
+{
+  wanCountdown = 20;
+  getWanStatus();
+}
+
+function checkFwStatus()
+{
+  $('#detectFw').hide();
+  if (parseInt(fwData.haveNewFw) == 1) {
+    console.log("Have new FW!");
+    $('#localFwVersion').html(fwData.localFwVersion);
+    $('#onlineFwVersion').html(fwData.onlineFwVersion);
+    $('#haveNewFw').show();
+  }
+  else {
+    goToWirelessSettings();
+  }
+}
+
+function getFwStatus()
+{
+  $.ajax({
+    url: "/f/wizardGetFw",
+    type: "GET",
+    success: function(result) {
+      fwData = result;
+      checkFwStatus();
+    },
+    error : function() {
+      console.log("get /f/wizardGetFw error");
+      fwData = null;
+    }
+  });
+}
+
+function goToCheckFirmware()
+{
+  $('#detectFw').show();
+  getFwStatus();
+}
+
+function getWirelessSettings()
+{
+  $.ajax({
+    url: "/f/wizardGetWireless",
+    type: "GET",
+    success: function(result) {
+      wirelessData = result;
+      wirelessData.ssid2g = decodeURIComponent(wirelessData.ssid2g);
+      wirelessData.auth2g = decodeURIComponent(wirelessData.auth2g);
+      wirelessData.psk2g = decodeURIComponent(wirelessData.psk2g);
+      wirelessData.ssid5g = decodeURIComponent(wirelessData.ssid5g);
+      wirelessData.auth5g = decodeURIComponent(wirelessData.auth5g);
+      wirelessData.psk5g = decodeURIComponent(wirelessData.psk5g);
+      $('input#ssid2g').val(wirelessData.ssid2g);
+      $('input#psk2g').val(wirelessData.psk2g);
+      $('input#ssid5g').val(wirelessData.ssid5g);
+      $('input#psk5g').val(wirelessData.psk5g);
+    },
+    error : function() {
+      console.log("get /f/wizardGetWireless error");
+      wirelessData = null;
+    }
+  });
+}
+
+function setWirelessSettings()
+{
+  var argu, ssid2g, psk2g, ssid5g, psk5g;
+  
+  if (wirelessData.auth2g == "psk2+aes" && wirelessData.auth5g == "psk2+aes") {
+    if ($('input#ssid2g').val() == wirelessData.ssid2g && 
+        $('input#psk2g').val() == wirelessData.psk2g && 
+        $('input#ssid5g').val() == wirelessData.ssid5g && 
+        $('input#psk5g').val() == wirelessData.psk5g) {
+      return 0;
+    }
+    
+    if ($('#changeWireless').prop("checked") == false) {
+      return 0;
+    }
+  }
+  
+  ssid2g = $('input#ssid2g').val();
+  if (!checkSSID(ssid2g) || !checkSpace(ssid2g)) {
+    alert(WirelessWarn1);
+    $('input#ssid2g').focus();
+    return -1;
+  }
+  argu = "ssid2g=" + encodeURIComponent(ssid2g);
+  
+  psk2g = $('input#psk2g').val();
+  if (psk2g.length < 8) {
+    alert(WirelessWarn2);
+    $('input#psk2g').focus();
+    return -1;
+  }
+  else if (psk2g.length > 63) {
+    alert(WirelessWarn3);
+    $('input#psk2g').focus();
+    return -1;
+  }
+  else if (!checkSpace(psk2g)) {
+    alert(WirelessWarnPsk);
+    $('input#psk2g').focus();
+    return -1;
+  }
+  argu += "&psk2g=" + encodeURIComponent(psk2g);
+  
+  ssid5g = $('input#ssid5g').val();
+  if (!checkSSID(ssid5g) || !checkSpace(ssid5g)) {
+    alert(WirelessWarn1);
+    $('input#ssid5g').focus();
+    return -1;
+  }
+  argu += "&ssid5g=" + encodeURIComponent(ssid5g);
+  
+  psk5g = $('input#psk5g').val();
+  if (psk5g.length < 8) {
+    alert(WirelessWarn2);
+    $('input#psk5g').focus();
+    return -1;
+  }
+  else if (psk5g.length > 63) {
+    alert(WirelessWarn3);
+    $('input#psk5g').focus();
+    return -1;
+  }
+  else if (!checkSpace(psk5g)) {
+    alert(WirelessWarnPsk);
+    $('input#psk5g').focus();
+    return -1;
+  }
+  argu += "&psk5g=" + encodeURIComponent(psk5g);
+  
+  requiredData.ssid2g = ssid2g;
+  requiredData.psk2g = psk2g;
+  requiredData.ssid5g = ssid5g;
+  requiredData.psk5g = psk5g;
+  
+  $.ajax({
+    url:'/f/wizardSetWireless',
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log("post /f/wizardSetWireless success");
+    },
+    error : function() {
+      console.log("post /f/wizardSetWireless error");
+    }
+  });
+  
+  return 1;
+}
+
+function goToWirelessSettings()
+{
+  $('#wirelessSettings').show();
+  getWirelessSettings();
+}
+
+$(document).ready(function() {
+  var currentPage;
+  
+  currentPage = window.location.toString();
+  if (currentPage.indexOf("wizard") == -1) {
+    refresh('wizard.html');
+    return;
+  }
+  
+  /* Get the data and fill the DOM */
+  var passwordInfo = getData("/f/wizardGetPassword");
+  if (passwordInfo != null) {
+    if (parseInt(passwordInfo.change) == 1) {
+      disableHomeButton = 1;
+      $('#changePassword').show();
+      $('input#name').val(decodeURIComponent(passwordInfo.name));
+    }
+    else {
+      showAutoDetect();
+      goToAutoDetect();
+    }
+  }
+  
+  $('#passwordToAutoDetect').click(function(event) {
+    if (changePassword()) {
+      $('#changePassword').hide();
+      disableHomeButton = 0;
+      showAutoDetect();
+      goToAutoDetect();
+    }
+  });
+  
+  $('#wanToAutoDetect').click(function(event) {
+    setWanSettings();
+  });
+  
+  $('#pppoeToAutoDetect').click(function(event) {
+    var argu = "proto=pppoe";
+    if ($('input#pppoeUserName').val().length == 0) {
+      alert(WANWarn5);
+      return;
+    }
+    argu += "&username=" + encodeURIComponent($('input#pppoeUserName').val());
+    if ($('input#pppoePassword').val().length == 0) {
+      alert(WANWarn4);
+      return;
+    }
+    argu += "&password=" + encodeURIComponent($('input#pppoePassword').val());
+    changeWanSettings(argu, "wanPppoeSettings");
+  });
+  
+  $('#staticToAutoDetect').click(function(event) {
+    var argu = "proto=static";
+    var ipAddr, subnet, gateway, dns1, dns2;
+    
+    ipAddr = $('input#staticIpAddr').val();
+    subnet = $('input#staticSubnet').val();
+    gateway = $('input#staticGateway').val();
+    dns1 = $('input#staticDns1').val();
+    dns2 = $('input#staticDns2').val();
+    
+    if (!checkIPAddr(ipAddr)) {
+      alert(InvalidIpAddress);
+      $('input#staticIpAddr').focus();
+      return;
+    }
+    
+    if (!checkIPMask(subnet)) {
+      $("input#staticSubnet").focus();
+      return;
+    }
+    
+    if(!checkIPAddr(gateway)){
+      alert(WANWarn3);
+      $('input#staticGateway').focus();
+      return;
+    }
+    
+    if (!checkIPAddr(dns1)) {
+      alert(WANWarn2);
+      $('input#staticDns1').focus();
+      return;
+    }
+    
+    if (dns2!="") {
+      if (!checkIPAddr(dns2)) {
+        alert(WANWarn2);
+        $('input#staticDns2').focus();
+        return;
+      }
+    }
+    
+    if(checkSameSubnet(ipAddr, lanIpAddr, subnet)==true) {
+      alert(PopInfo21);
+      $('input#staticIpAddr').focus();
+      return false;
+    }
+    
+    argu += "&ipAddr=" + ipAddr + "&subnet=" + subnet + "&gateway=" + gateway 
+            + "&dns1=" + dns1 + "&dns2=" + dns2;
+    changeWanSettings(argu, "wanStaticSettings");
+  });
+  
+  $('#pptpToAutoDetect').click(function(event) {
+    var argu = "proto=pptp";
+    var server, dynamic, ipAddr, subnet, gateway;
+    
+    if ($('input#pptpUserName').val().length == 0) {
+      alert(WANWarn5);
+      return;
+    }
+    argu += "&username=" + encodeURIComponent($('input#pptpUserName').val());
+    if ($('input#pptpPassword').val().length == 0) {
+      alert(WANWarn4);
+      return;
+    }
+    argu += "&password=" + encodeURIComponent($('input#pptpPassword').val());
+    server = $('input#pptpServer').val();
+    if(!checkIPAddr(server)){
+        alert(WANWarn3);
+        $('input#pptpServer').focus();
+        return;
+    }
+    argu += "&server=" + server;
+
+    dynamic = $('input#pptpDynamicIpAddr').prop('checked');
+    if (!dynamic) {
+      argu += "&dynamic=0";
+      
+      ipAddr = $('input#pptpIpAddr').val();
+      subnet = $('input#pptpSubnet').val();
+      gateway = $('input#pptpGateway').val();
+      
+      if (!checkIPAddr(ipAddr)) {
+        alert(InvalidIpAddress);
+        $('input#pptpIpAddr').focus();
+        return;
+      }
+      
+      if (!checkIPMask(subnet)) {
+        $("input#pptpSubnet").focus();
+        return;
+      }
+      
+      if(!checkIPAddr(gateway)){
+        alert(WANWarn3);
+        $('input#pptpGateway').focus();
+        return;
+      }
+      
+      argu += "&ipAddr=" + ipAddr + "&subnet=" + subnet + "&gateway=" + gateway;
+    }
+    else {
+      argu += "&dynamic=1";
+    }
+    
+    changeWanSettings(argu, "wanPptpSettings");
+  });
+  
+  $('#l2tpToAutoDetect').click(function(event) {
+    var argu = "proto=l2tp";
+    var server, dynamic, ipAddr, subnet, gateway;
+    
+    if ($('input#l2tpUserName').val().length == 0) {
+      alert(WANWarn5);
+      return;
+    }
+    argu += "&username=" + encodeURIComponent($('input#l2tpUserName').val());
+    if ($('input#l2tpPassword').val().length == 0) {
+      alert(WANWarn4);
+      return;
+    }
+    argu += "&password=" + encodeURIComponent($('input#l2tpPassword').val());
+    server = $('input#l2tpServer').val();
+    if(!checkIPAddr(server)){
+      alert(WANWarn3);
+      $('input#l2tpServer').focus();
+      return;
+    }
+    argu += "&server=" + server;
+    
+    dynamic = $('input#l2tpDynamicIpAddr').prop('checked');
+    if (!dynamic) {
+      argu += "&dynamic=0";
+      
+      ipAddr = $('input#l2tpIpAddr').val();
+      subnet = $('input#l2tpSubnet').val();
+      gateway = $('input#l2tpGateway').val();
+      
+      if (!checkIPAddr(ipAddr)) {
+        alert(InvalidIpAddress);
+        $('input#l2tpIpAddr').focus();
+        return;
+      }
+      
+      if (!checkIPMask(subnet)) {
+        $("input#l2tpSubnet").focus();
+        return;
+      }
+      
+      if(!checkIPAddr(gateway)){
+        alert(WANWarn3);
+        $('input#l2tpGateway').focus();
+        return;
+      }
+      
+      argu += "&ipAddr=" + ipAddr + "&subnet=" + subnet + "&gateway=" + gateway;
+    }
+    else {
+      argu += "&dynamic=1";
+    }
+    
+    changeWanSettings(argu, "wanL2tpSettings");
+  });
+  
+  $('#reSelectWan').click(function(event) {
+    hideAutoDetect();
+    $('#wanSettings').show();
+    closeWindow("noWanWindow");
+    $('input#wanType').filter('[value=' + wanData.proto + ']').prop('checked', true);
+  });
+  
+  $('#doFwUpgrade').click(function(event) {
+	retryUpgradeFw = 0;
+    fwUpgrade();
+  });
+  
+  $('#skipFwUpgrade').click(function(event) {
+    $('#haveNewFw').hide();
+    goToWirelessSettings();
+  });
+  
+  $('#wirelessToDashboard').click(function(event) {
+    var result = setWirelessSettings();
+    if (result == -1) {
+      return;
+    }
+    else if (result == 0) {
+      skipWizard();
+    }
+    else if (result == 1) {
+      waitTimeout=30;
+      showWindow("waitWindow");
+      countdownWindow("waitingDig");
+    }
+  });
+  
+  $('input#ssid2g').keyup(function(){
+    copyWirelessSettings($('input#copyWireless').prop("checked"));
+  });
+  $('input#psk2g').keyup(function(){
+    copyWirelessSettings($('input#copyWireless').prop("checked"));
+  });
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+		<tr>
+          <td align="center" background="images/UI-new_10.png">
+            <div id="changePassword" style="display:none">
+              <table width="95%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td colspan="2" align="center"><h4><script>document.write(SetPasswordTitle);</script></h4></td>
+                </tr>
+                <tr>
+                  <td colspan="2" class="style7" align="center">
+                    <script>document.write(SetPasswordInfo);</script>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="left" class="style6">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td width="45%" align="right" class="style8">
+                    <script>document.write(AdmSetRouterLoginName);</script>&nbsp;&nbsp;
+                  </td>
+                  <td width="55%" align="left" class="style8">
+                    <input type="text" id="name" maxlength="12"></input>
+                  </td>
+                </tr>
+                <tr>
+                  <td width="45%" align="right" class="style8">
+                    <script>document.write(AdmSetPassword);</script>&nbsp;&nbsp;
+                  </td>
+                  <td width="55%" align="left" class="style8">
+                    <input type="password" id="password" maxlength="12"></input>&nbsp;
+                    <input type="checkbox" id="passwordMask" checked onclick="changePasswordMask('password', this.checked);">
+                      <span><script>document.write(WirelessMask);</script></span>
+                    </input>
+                  </td>
+                </tr>
+                <tr>
+                  <td width="45%" align="right" class="style8">
+                    <script>document.write(AdmSetRepeatNewPassword);</script>&nbsp;&nbsp;
+                  </td>
+                  <td width="55%" align="left" class="style8">
+                    <input type="password" id="passwordConfirm" maxlength="12"></input>&nbsp;
+                    <input type="checkbox" id="passwordConfirmMask" checked onclick="changePasswordMask('passwordConfirm', this.checked);">
+                      <span><script>document.write(WirelessMask);</script></span>
+                    </input>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="left" class="style6">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td colspan="2" align="center"><table width="119" height="39" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td class="button1" id="passwordToAutoDetect"><a><script>document.write(StartWirelessNext);</script></a></td>
+                    </tr>
+                  </table></td>
+                </tr>
+              </table>
+            </div>
+            <div id="autoDetect" style="display:none">
+              <table width="95%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td colspan="2" align="center">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td colspan="2" align="center">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td width="40%" align="right" class="style7" valign="center">
+                    <img src="images/loading.gif">&nbsp;
+                  </td>
+                  <td width="60%" align="left" class="style7" valign="center">
+                    <script>document.write(Start);</script>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="2" align="center">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td colspan="2" align="center">&nbsp;</td>
+                </tr>
+              </table>
+            </div>
+            <div id="wanSettings" style="display:none">
+              <table width="95%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td width="3%" height="25" align="left">
+                    <input type="radio" id="wanType" name="wanType" value="dhcp"></input>
+                  </td>
+                  <td width="97%" align="left"><h4><script>document.write(StartWanDhcp);</script></h4></td>
+                </tr>
+                <tr>
+                  <td align="left">&nbsp;</td>
+                  <td align="left" class="style8"><script>document.write(StartWanDhcpDesc);</script></h4></td>
+                </tr>
+                <tr>
+                  <td><input type="radio" id="wanType" name="wanType" value="pppoe"></input></td>
+                  <td align="left"><h4><script>document.write(SelectTypePPPoE);</script></h4></td>
+                </tr>
+                <tr>
+                  <td align="left">&nbsp;</td>
+                  <td align="left" class="style8"><script>document.write(StartWanPppoeDesc);</script></h4></td>
+                </tr>
+                <tr>
+                  <td><input type="radio" id="wanType" name="wanType" value="static"></input></td>
+                  <td align="left"><h4><script>document.write(SelectTypeStaticIP);</script></h4></td>
+                </tr>
+                <tr>
+                  <td align="left">&nbsp;</td>
+                  <td align="left" class="style8"><script>document.write(StartWanStaticDesc);</script></h4></td>
+                </tr>
+                <tr>
+                  <td><input type="radio" id="wanType" name="wanType" value="pptp"></input></td>
+                  <td align="left"><h4><script>document.write(SelectTypePPTP);</script></h4></td>
+                </tr>
+                <tr>
+                  <td align="left">&nbsp;</td>
+                  <td align="left" class="style8"><script>document.write(StartWanPptpDesc);</script></h4></td>
+                </tr>
+                <tr>
+                  <td><input type="radio" id="wanType" name="wanType" value="l2tp"></input></td>
+                  <td align="left"><h4><script>document.write(SelectTypeL2TP);</script></h4></td>
+                </tr>
+                <tr>
+                  <td align="left">&nbsp;</td>
+                  <td align="left" class="style8"><script>document.write(StartWanL2tpDesc);</script></h4></td>
+                </tr>
+                <tr>
+                  <td align="left">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td colspan="2" align="center"><table width="119" height="39" border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td class="button1" id="wanToAutoDetect"><a><script>document.write(StartWirelessNext);</script></a></td>
+                    </tr>
+                  </table></td>
+                </tr>
+              </table>
+            </div>
+            <div id="wanPppoeSettings" style="display:none">
+              <table width="95%" align="center" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td width="25%"></td>
+                  <td width="50%" align="left">
+                    <h4><script>document.write(SelectTypePPPoE);</script></h4>
+                    <h4><script>document.write(SelectType4WarnAccInfo);</script></h4>
+                    <table width="100%">
+                      <tr>
+                        <td width="28%" align="left" class="style8">
+                          <script>document.write(WANUserName);</script>
+                        </td>
+                        <td width="72%" align="left" class="style8">
+                          <input type="text" id="pppoeUserName" maxlength="64"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(WANPassword);</script>
+                        </td>
+                        <td align="left" class="style8">
+                          <input type="password" id="pppoePassword" maxlength="64"></input>
+                          <input type="checkbox" id="pppoePasswordMask" checked onclick="changePasswordMask('pppoePassword', this.checked);">
+                            <span><script>document.write(WirelessMask);</script></span>
+                          </input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style6">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" align="center"><table width="119" height="39" border="0" cellspacing="0" cellpadding="0">
+                          <tr>
+                            <td class="button1" id="pppoeToAutoDetect"><a><script>document.write(StartWirelessNext);</script></a></td>
+                          </tr>
+                        </table></td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td width="25%"></td>
+                </tr>
+              </table>
+            </div>
+            <div id="wanStaticSettings" style="display:none">
+              <table width="95%" align="center" border="0" cellspacing="2" cellpadding="2">
+			    <tr>
+                  <td width="25%"></td>
+                  <td width="50%" align="left">
+                    <h4><script>document.write(SelectType3WarnStatucSetting);</script></h4>
+                    <table width="100%">
+                      <tr>
+                        <td width="28%" align="left" class="style8">
+                          <script>document.write(SelectType4WarnIPAddr);</script>
+                        </td>
+                        <td width="72%" align="left" class="style8" maxlength="32">
+                          <input type="text" id="staticIpAddr"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(SelectType3WarnSubnet);</script>
+                        </td>
+                        <td align="left" class="style8" maxlength="32">
+                          <input type="text" id="staticSubnet"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(SelectType3WarnGateway);</script>
+                        </td>
+                        <td align="left" class="style8" maxlength="32">
+                          <input type="text" id="staticGateway"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(SelectType3WarnDDNS1);</script>
+                        </td>
+                        <td align="left" class="style8" maxlength="32">
+                          <input type="text" id="staticDns1"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(SelectType3WarnDDNS2);</script>
+                        </td>
+                        <td align="left" class="style8" maxlength="32">
+                          <input type="text" id="staticDns2"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style6">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" align="center"><table width="119" height="39" border="0" cellspacing="0" cellpadding="0">
+                          <tr>
+                            <td class="button1" id="staticToAutoDetect"><a><script>document.write(StartWirelessNext);</script></a></td>
+                          </tr>
+                        </table></td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td width="25%"></td>
+                </tr>
+              </table>
+            </div>
+            <div id="wanPptpSettings" style="display:none">
+              <table width="95%" align="center" border="0" cellspacing="2" cellpadding="2">
+			    <tr>
+                  <td width="25%"></td>
+                  <td width="50%" align="left">
+                    <h4><script>document.write(SelectTypePPTP);</script></h4>
+                    <h4><script>document.write(SelectType4WarnAccInfo);</script></h4>
+                    <table width="100%">
+                      <tr>
+                        <td width="28%" align="left" class="style8">
+                          <script>document.write(WANUserName);</script>
+                        </td>
+                        <td width="72%" align="left" class="style8">
+                          <input type="text" id="pptpUserName" maxlength="64"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(WANPassword);</script>
+                        </td>
+                        <td align="left" class="style8">
+                          <input type="password" id="pptpPassword" maxlength="64"></input>
+                          <input type="checkbox" id="pptpPasswordMask" checked onclick="changePasswordMask('pptpPassword', this.checked);">
+                            <span><script>document.write(WirelessMask);</script></span>
+                          </input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(SelectTypePPTP);</script>&nbsp;
+                          <script>document.write(WANGateway);</script>
+                        </td>
+                        <td align="left" class="style8">
+                          <input type="text" id="pptpServer" maxlength="63"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style6">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td colspan="2">
+                          <h4><script>document.write(SelectType5WarnIPinfo);</script></h4>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" class="style8" align="left">
+                          <input id="pptpDynamicIpAddr" type="checkbox" checked onclick="changePptpIpSettings(this.checked)">
+                            <span class="style6-1">
+                              <script>document.write(WANAutofromISP);</script>
+                            </span>
+                          </input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(SelectType3WarnIP);</script>
+                        </td>
+                        <td align="left" class="style8">
+                          <input type="text" id="pptpIpAddr" maxlength="32" disabled></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(SelectType3WarnSubnet);</script>
+                        </td>
+                        <td align="left" class="style8">
+                          <input type="text" id="pptpSubnet" maxlength="32" disabled></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(SelectType3WarnGateway);</script>
+                        </td>
+                        <td align="left" class="style8">
+                          <input type="text" id="pptpGateway" maxlength="32" disabled></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style6">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" align="center"><table width="119" height="39" border="0" cellspacing="0" cellpadding="0">
+                          <tr>
+                            <td class="button1" id="pptpToAutoDetect"><a><script>document.write(StartWirelessNext);</script></a></td>
+                          </tr>
+                        </table></td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td width="25%"></td>
+                </tr>
+              </table>
+            </div>
+            <div id="wanL2tpSettings" style="display:none">
+              <table width="95%" align="center" border="0" cellspacing="2" cellpadding="2">
+			    <tr>
+                  <td width="25%"></td>
+                  <td width="50%" align="left">
+                    <h4><script>document.write(SelectTypeL2TP);</script></h4>
+                    <h4><script>document.write(SelectType4WarnAccInfo);</script></h4>
+                    <table width="100%">
+                      <tr>
+                        <td width="28%" align="left" class="style8">
+                          <script>document.write(WANUserName);</script>
+                        </td>
+                        <td width="72%" align="left" class="style8">
+                          <input type="text" id="l2tpUserName" maxlength="64"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(WANPassword);</script>
+                        </td>
+                        <td align="left" class="style8">
+                          <input type="password" id="l2tpPassword" maxlength="64"></input>
+                          <input type="checkbox" id="l2tpPasswordMask" checked onclick="changePasswordMask('l2tpPassword', this.checked);">
+                            <span><script>document.write(WirelessMask);</script></span>
+                          </input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(SelectTypeL2TP);</script>&nbsp;
+                          <script>document.write(WANGateway);</script>
+                        </td>
+                        <td align="left" class="style8">
+                          <input type="text" id="l2tpServer" maxlength="63"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style6">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td colspan="2">
+                          <h4><script>document.write(SelectType5WarnIPinfo);</script></h4>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" class="style8" align="left">
+                          <input id="l2tpDynamicIpAddr" type="checkbox" checked onclick="changeL2tpIpSettings(this.checked)">
+                            <span class="style6-1">
+                              <script>document.write(WANAutofromISP);</script>
+                            </span>
+                          </input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(SelectType3WarnIP);</script>
+                        </td>
+                        <td align="left" class="style8">
+                          <input type="text" id="l2tpIpAddr" maxlength="32" disabled></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(SelectType3WarnSubnet);</script>
+                        </td>
+                        <td align="left" class="style8">
+                          <input type="text" id="l2tpSubnet" maxlength="32" disabled></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(SelectType3WarnGateway);</script>
+                        </td>
+                        <td align="left" class="style8">
+                          <input type="text" id="l2tpGateway" maxlength="32" disabled></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style6">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" align="center"><table width="119" height="39" border="0" cellspacing="0" cellpadding="0">
+                          <tr>
+                            <td class="button1" id="l2tpToAutoDetect"><a><script>document.write(StartWirelessNext);</script></a></td>
+                          </tr>
+                        </table></td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td width="25%"></td>
+                </tr>
+              </table>
+            </div>
+            <div id="detectFw" style="display:none">
+              <table width="95%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td colspan="2" align="center">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td colspan="2" align="center">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td width="40%" align="right" class="style7" valign="center">
+                    <img src="images/loading.gif">&nbsp;
+                  </td>
+                  <td width="60%" align="left" class="style7" valign="center">
+                    <script>document.write(StartCheckFW);</script>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="2" align="center">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td colspan="2" align="center">&nbsp;</td>
+                </tr>
+              </table>
+            </div>
+            <div id="haveNewFw" style="display:none">
+              <table width="95%" align="center" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td width="25%"></td>
+                  <td width="50%" align="left">
+                    <table width="100%">
+                      <tr>
+                        <td colspan="2" align="left" class="style7">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" align="center" class="style7">
+                          <span><script>document.write(RestoreInfo1);</script></span>&nbsp;<span id="localFwVersion"></span><br>
+                          <span><script>document.write(RestoreInfo2);</script></span>&nbsp;<span id="onlineFwVersion"></span><br>
+                          <span><script>document.write(RestoreInfo3);</script></span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style6">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" align="center"><table border="0" cellspacing="0" cellpadding="0">
+                          <tr>
+                            <td><table width="119" height="39" border="0" cellspacing="0" cellpadding="0">
+                              <tr>
+                                <td class="button1" id="doFwUpgrade"><a><script>document.write(GeneralYes);</script></a></td>
+                              </tr>
+                            </table></td>
+                            <td><table width="119" height="39" border="0" cellspacing="0" cellpadding="0">
+                              <tr>
+                                <td class="button1" id="skipFwUpgrade"><a><script>document.write(GeneralNo);</script></a></td>
+                              </tr>
+                            </table></td>
+                          </tr>
+                        </table></td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td width="25%"></td>
+                </tr>
+              </table>
+            </div>
+            <div id="upgradeFwCountdown" style="display:none">
+              <table width="95%" align="center" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td width="25%"></td>
+                  <td width="50%" align="left">
+                    <table width="100%">
+                      <tr>
+                        <td colspan="2" align="left" class="style7">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" align="left" class="style7">
+                          <script>document.write(StartCheckFWUpdate);</script>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="center">
+                          <div align="left" id="szlider2">
+                            <div id="precentNumber2"></div>
+                            <div id="szazalek2"></div>
+                            <div id="szliderbar2"></div>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" align="left" class="style7">&nbsp;</td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td width="25%"></td>
+                </tr>
+              </table>
+            </div>
+            <div id="wirelessSettings" style="display:none">
+              <table width="95%" align="center" border="0" cellspacing="2" cellpadding="2">
+			    <tr>
+                  <td width="25%"></td>
+                  <td width="50%" align="left"><h4><script>document.write(StartWirelessSetting);</script></h4>
+                    <table width="100%">
+                      <tr>
+                        <td colspan="2" align="left" class="style8">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" align="left" class="style7"><script>document.write(StartWireless2GSecurity);</script></td>
+                        <td></td>
+                      </tr>
+                      <tr>
+                        <td width="28%" align="left" class="style8">
+                          <script>document.write(StartWirelessName);</script>
+                        </td>
+                        <td width="72%" align="left" class="style8">
+                          <input type="text" id="ssid2g" maxlength="32"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(StartWirelessPassword);</script>
+                        </td>
+                        <td align="left" class="style8">
+                          <input type="text" id="psk2g" maxlength="63"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" align="left">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" align="left" class="style8">
+                          <input type="checkbox" id="copyWireless" onclick="copyWirelessSettings(this.checked);" checked></input>
+                          <script>document.write(StartWirelessCopy);</script>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" align="left"><img src="images/line.png" width="100%" height="5" /></td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" align="left" class="style7"><script>document.write(StartWireless5GSecurity);</script></td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(StartWirelessName);</script>
+                        </td>
+                        <td align="left" class="style8">
+                          <input type="text" id="ssid5g" maxlength="32"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style8">
+                          <script>document.write(StartWirelessPassword);</script>
+                        </td>
+                        <td align="left" class="style8">
+                          <input type="text" id="psk5g" maxlength="63"></input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="style6">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" align="center"><table width="119" height="39" border="0" cellspacing="0" cellpadding="0">
+                          <tr>
+                            <td class="button1" id="wirelessToDashboard"><a><script>document.write(StartWirelessNext);</script></a></td>
+                          </tr>
+                        </table></td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td width="25%"></td>
+                </tr>
+              </table>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+<!-- End Save for Web Slices -->
+</body>
+<script type="text/javascript">
+  writeWindow("cover");
+  writeWindow("waitWindow");
+  writeWindow("noWanWindow");
+</script>
+</html>

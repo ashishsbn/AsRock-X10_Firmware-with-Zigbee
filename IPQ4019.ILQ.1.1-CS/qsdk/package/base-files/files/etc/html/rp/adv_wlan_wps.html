@@ -1,0 +1,531 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="-1" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/asrock-rp.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+var wps2gForecedDisabled, wps5gForecedDisabled;
+var wps2gEnabledOri, wps5gEnabledOri;
+var wpsTimeout = 120, allowApplyCancel = 1, wpsCheck = 0, wpsBand = "0";
+
+function setData(url)
+{
+  var argu, wps2gEnabled, wps5gEnabled;
+  
+  wps2gEnabled = parseValueOfOnOff($('#wps2gEnabled').val());
+  if (wps2gEnabled == 1 && wps2gForecedDisabled == 1) {
+    alert(WPSDisabled);
+    return false;
+  }
+  argu = "wps2gEnabled=" + wps2gEnabled;
+  
+  wps5gEnabled = parseValueOfOnOff($('#wps5gEnabled').val());
+  if (wps5gEnabled == 1 && wps5gForecedDisabled == 1) {
+    alert(WPSDisabled);
+    return false;
+  }
+  argu += "&wps5gEnabled=" + wps5gEnabled;
+  
+  console.log(argu);
+  
+  $.ajax({
+    url: url,
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log(result);
+    },
+    error : function() {
+      console.log("post " + url + " error");
+    }
+  });
+  
+  return true;
+}
+
+function updateWps2gAttr(switchThis)
+{
+  var value = $('#wps2gEnabled').val();
+  if (value == "ON" && wps2gEnabledOri == 1 && wps2gForecedDisabled == 0) {
+    updateWps2gMethodAttr("1");
+    updateWps2gClientPinCodeAttr($('input[name=wps2gMethod]:checked').val());
+	updateWps2gButtonAttr("1");
+  }
+  else {
+    updateWps2gMethodAttr("0");
+    updateWps2gClientPinCodeAttr("0");
+	updateWps2gButtonAttr("0");
+  }
+}
+
+function updateWps2gMethodAttr(enable)
+{
+  if (enable == "1") {
+    $('input#wps2gMethod').removeAttr('disabled');
+  }
+  else {
+    $('input#wps2gMethod').attr('disabled', 'disabled');
+  }
+}
+
+function updateWps2gClientPinCodeAttr(value)
+{
+  if (value == "1") {
+    $('input#wps2gClientPinCode').removeAttr('disabled');
+  }
+  else {
+    $('input#wps2gClientPinCode').attr('disabled', 'disabled');
+  }
+}
+
+function updateWps2gButtonAttr(value)
+{
+  if (value == "1") {
+    $('input#startWps2g').removeAttr('disabled');
+    $('input#cancelWps2g').removeAttr('disabled');
+  }
+  else {
+    $('input#startWps2g').attr('disabled', 'disabled');
+    $('input#cancelWps2g').attr('disabled', 'disabled');
+  }
+}
+
+function startWps2g()
+{
+  var mode, clientPinCode;
+  
+  mode = $('input[name=wps2gMethod]:checked').val();
+  if (mode == "1") {
+    clientPinCode = $('input#wps2gClientPinCode').val();
+    console.log("clientPinCode = " + clientPinCode);
+    if (!checkPinCode(clientPinCode)) {
+      return false;
+    }
+  }
+  wpsBand = "0";
+  setWpsAction("0", "start", mode, clientPinCode);
+  checkWpsStatus();
+}
+
+function cancelWps2g()
+{
+  setWpsAction("0", "cancel");
+}
+
+function updateWps5gAttr(switchThis)
+{
+  var value = $('#wps5gEnabled').val();
+  if (value == "ON" && wps5gEnabledOri == 1 && wps5gForecedDisabled == 0) {
+    updateWps5gMethodAttr("1");
+    updateWps5gClientPinCodeAttr($('input[name=wps5gMethod]:checked').val());
+	updateWps5gButtonAttr("1");
+  }
+  else {
+    updateWps5gMethodAttr("0");
+    updateWps5gClientPinCodeAttr("0");
+	updateWps5gButtonAttr("0");
+  }
+}
+
+function updateWps5gMethodAttr(enable)
+{
+  if (enable == "1") {
+    $('input#wps5gMethod').removeAttr('disabled');
+  }
+  else {
+    $('input#wps5gMethod').attr('disabled', 'disabled');
+  }
+}
+
+function updateWps5gClientPinCodeAttr(value)
+{
+  if (value == "1") {
+    $('input#wps5gClientPinCode').removeAttr('disabled');
+  }
+  else {
+    $('input#wps5gClientPinCode').attr('disabled', 'disabled');
+  }
+}
+
+function updateWps5gButtonAttr(value)
+{
+  if (value == "1") {
+    $('input#startWps5g').removeAttr('disabled');
+    $('input#cancelWps5g').removeAttr('disabled');
+  }
+  else {
+    $('input#startWps5g').attr('disabled', 'disabled');
+    $('input#cancelWps5g').attr('disabled', 'disabled');
+  }
+}
+
+function startWps5g()
+{
+  var mode, clientPinCode;
+  
+  mode = $('input[name=wps5gMethod]:checked').val();
+  if (mode == "1") {
+    clientPinCode = $('input#wps5gClientPinCode').val();
+    console.log("clientPinCode = " + clientPinCode);
+    if (!checkPinCode(clientPinCode)) {
+      return false;
+    }
+  }
+  wpsBand = "1";
+  setWpsAction("1", "start", mode, clientPinCode);
+  checkWpsStatus();
+}
+
+function cancelWps5g()
+{
+  setWpsAction("1", "cancel");
+}
+
+function getWpsStatus()
+{
+  var wlanWpsStatusInfo = getData("/f/rp/getWlanApWpsAction");
+  
+  return parseInt(wlanWpsStatusInfo.wpsStatus);
+}
+
+function checkWpsStatus()
+{
+  var success = 0;
+  
+  if (wpsBand == "0") {
+    $('input#startWps2g').prop('value', wpsTimeout + " " + WPSSecond);
+  }
+  else if (wpsBand == "1") {
+    $('input#startWps5g').prop('value', wpsTimeout + " " + WPSSecond);
+  }
+  
+  if (wpsTimeout == 0) {
+    //FAIL: TIME-OUT
+    alert(WPSWarn1);
+    restore();
+    return;
+  }
+  else if (wpsTimeout < 115 && wpsTimeout % 3 == 0) {
+    //Query status
+    success = getWpsStatus();
+    if (success == 1) {
+      //SUCCESS
+      alert(WPSWarn2);
+      restore();
+      return;
+    }
+  }
+  
+  wpsTimeout--;
+  wpsCheck = setTimeout(checkWpsStatus, 1000);
+}
+
+function setWpsAction(band, action, mode, clientPinCode)
+{
+  var argu;
+  
+  argu = "band=" + band + "&action=" + action;
+  if (action == "start") {
+    argu += "&mode=" + mode;
+    if (mode == "1") {
+      argu += "&clientPinCode=" + clientPinCode;
+    }
+    disableAllElements();
+  }
+  else if (action == "cancel") {
+    if (wpsCheck!=0) {
+      clearTimeout(wpsCheck);
+      wpsCheck = 0;
+    }
+    else {
+      return;
+    }
+    restore();
+  }
+  
+  console.log(argu);
+  
+  $.ajax({
+    url: "/f/rp/setWlanApWpsAction",
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log(result);
+    },
+    error : function() {
+      console.log("post " + url + " error");
+    }
+  });
+  
+  return true;
+}
+
+function wpsButton(band, type)
+{
+  var id, action, value;
+  id = type + "Wps" + band;
+  if (type == "cancel") {
+    value = WPSCancel;
+  }
+  else {
+    value = WPSStart;
+  }
+  return "<input type=\"button\" style=\"width: 100px\" id=\"" + id + "\" onclick=\"" + id + "()\" value=\"" + value + "\"</input>"
+}
+
+function checkPinCodeChecksum(code)
+{
+  var accum=0;
+  
+  accum += 3 * (parseInt(code / 10000000) % 10);
+  accum += 1 * (parseInt(code / 1000000) % 10);
+  accum += 3 * (parseInt(code / 100000) % 10);
+  accum += 1 * (parseInt(code / 10000) % 10);
+  accum += 3 * (parseInt(code / 1000) % 10);
+  accum += 1 * (parseInt(code / 100) % 10);
+  accum += 3 * (parseInt(code / 10) % 10);
+  accum += 1 * (parseInt(code / 1) % 10);
+  
+  return (0 == (accum % 10));
+}
+
+function checkPinCode(pinCode)
+{
+  var i, len, realPinCode="";
+  
+  len = pinCode.length;
+  for (i = 0; i < pinCode.length; i++) {
+    if ((pinCode.charAt(i) == ' ') || (pinCode.charAt(i) == '-')){
+      len--;
+      continue;
+    }
+    else {
+      if ((pinCode.charAt(i) < '0') || (pinCode.charAt(i) > '9')) {
+        alert(WPSWarn4);
+        return false;
+      }
+      else {
+        realPinCode += pinCode.charAt(i);
+      }
+    }
+  }
+  
+  if (len != 8) {
+    alert(WPSWarn3);
+    return false;
+  }
+  else {
+    var code = parseInt(realPinCode, 10);
+    if (!checkPinCodeChecksum(code)) {
+      alert(WPSWarn4);
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+function afterAssign()
+{
+  updateWps2gAttr();
+  updateWps5gAttr();
+}
+
+function disableAllElements()
+{
+  allowApplyCancel = 0;
+  $('span#wps2gEnabled').attr('disabled', 'disabled');
+  $('input#wps2gMethod').attr('disabled', 'disabled');
+  $('input#wps2gClientPinCode').attr('disabled', 'disabled');
+  $('input#startWps2g').attr('disabled', 'disabled');
+  $('input#cancelWps2g').attr('disabled', 'disabled');
+  $('span#wps5gEnabled').attr('disabled', 'disabled');
+  $('input#wps5gMethod').attr('disabled', 'disabled');
+  $('input#wps5gClientPinCode').attr('disabled', 'disabled');
+  $('input#startWps5g').attr('disabled', 'disabled');
+  $('input#cancelWps5g').attr('disabled', 'disabled');
+  
+  if (wpsBand == "0") {
+    $('input#cancelWps2g').removeAttr('disabled');
+  }
+  else if (wpsBand == "1") {
+    $('input#cancelWps5g').removeAttr('disabled');
+  }
+}
+
+function restore()
+{
+  wpsTimeout = 120;
+  allowApplyCancel = 1;
+  wpsCheck = 0;
+  $('span#wps2gEnabled').removeAttr('disabled');
+  $('span#wps5gEnabled').removeAttr('disabled');
+  $('input#startWps2g').prop('value', WPSStart);
+  $('input#startWps5g').prop('value', WPSStart);
+  afterAssign();
+}
+
+$(document).ready(function(){
+  console.log("document ready!!!");
+  isLoggedIn();
+  
+  /* Setup the Menu, expand the Wireless items */
+  $('#wirelessMenu').parent().removeClass('menu');
+  $('#wirelessMenu').parent().addClass('mainmenu');
+  $('#wirelessMenu').find('.submenu').addClass('show_menu');
+  $('.show_menu').show();
+  $('#wirelessWps').removeClass('show_menu');
+  $('#wirelessWps').removeClass('submenu');
+  $('#wirelessWps').addClass('mainsubmenu');
+  $('#wirelessWps').addClass('show_menu');
+
+  /* Empty category arrays */
+  emptyElementArrays();
+  
+  /* Draw items */
+  switchOnOff(WPSfunction, "wps2gEnabled", updateWps2gAttr, 23);
+  var wpsMethodList = {"0" : WPSPushbutton, "1" : WPSWPSelessCcode};
+  radios(WPSMethod, "wps2gMethod", wpsMethodList, updateWps2gClientPinCodeAttr);
+  $('input#wps2gMethod').filter('[value=0]').prop('checked', true);
+  text(WPSPINcode, "wps2gClientPinCode");
+  $('input#wps2gClientPinCode').after("&nbsp;" + wpsButton("2g", "cancel"));
+  $('input#wps2gClientPinCode').after("&nbsp;&nbsp;" + wpsButton("2g", "start"));
+  label(WPSPINcodeSelf, "wps2gPinCode");
+  $('#wps2gPinCode').append("<td align=\"left\" class=\"style6-2\" id=\"wps2gPinCodeSelf\"></td>");
+  
+  switchOnOff(WPSfunction, "wps5gEnabled", updateWps5gAttr, 23);
+  var wpsMethodList = {"0" : WPSPushbutton, "1" : WPSWPSelessCcode};
+  radios(WPSMethod, "wps5gMethod", wpsMethodList, updateWps5gClientPinCodeAttr);
+  $('input#wps5gMethod').filter('[value=0]').prop('checked', true);
+  text(WPSPINcode, "wps5gClientPinCode");
+  $('input#wps5gClientPinCode').after("&nbsp;" + wpsButton("5g", "cancel"));
+  $('input#wps5gClientPinCode').after("&nbsp;&nbsp;" + wpsButton("5g", "start"));
+  label(WPSPINcodeSelf, "wps5gPinCode");
+  $('#wps5gPinCode').append("<td align=\"left\" class=\"style6-2\" id=\"wps5gPinCodeSelf\"></td>");
+  
+  /* Get the data and fill the DOM */
+  var wlanWpsInfo = getData("/f/rp/getWlanApWps");
+  if (wlanWpsInfo != null) {
+    wps2gEnabledOri = wlanWpsInfo.wps2gEnabled;
+    wps5gEnabledOri = wlanWpsInfo.wps5gEnabled;
+    wps2gForecedDisabled = wlanWpsInfo.wps2gForecedDisabled;
+    wps5gForecedDisabled = wlanWpsInfo.wps5gForecedDisabled;
+    /* Put the value into the DOM by key (id) */
+    $.each(wlanWpsInfo, function(key, value) {
+      console.log("key : " + key + " value : " + value);
+      doAssignValues(key, value);
+    });
+    $('#wps2gPinCodeSelf').append(wlanWpsInfo.wps2gPinCodeSelf);
+    $('#wps5gPinCodeSelf').append(wlanWpsInfo.wps5gPinCodeSelf);
+	afterAssign();
+  }
+  
+  /* Apply action */
+  $('#Apply').click(function(event) {
+    console.log("apply click...");
+    if (allowApplyCancel && setData("/f/rp/setWlanApWps")) {
+      //Need more time to reload both wireless interface
+      waitTimeout=30;
+      showWindow("waitWindow");
+      countdownWindow("waitingDig");
+    }
+  });
+  
+  /* Cancel action */
+  $("#Cancel").click(function(event) {
+    console.log("cancel click...");
+    if (allowApplyCancel == 1) {
+      refresh();
+    }
+  });
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" align="center" valign="top">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                <script type="text/javascript">writeRpLeftMenu();</script> 
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top"><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td colspan="2" align="left"><h4><script>document.write(AdvWPS);</script></h4></td>
+                </tr>
+                <tr>
+                  <td align="left" class="style6" colspan=2><img src="images/line-s.png"></td>
+                </tr>
+                <tr><td>&nbsp;</td></tr>
+                <tr><td>&nbsp;</td></tr>
+                <tr>
+                  <td colspan="2" align="left"><h4><script>document.write(WPS2G);</script></h4></td>
+                </tr>
+                <tr id="wps2gEnabled">
+                </tr>
+                <tr id="wps2gMethod">
+                </tr>
+                <tr id="wps2gClientPinCode">
+                </tr>
+                <tr id="wps2gPinCode">
+                </tr>
+                <tr><td>&nbsp;</td></tr>
+                <tr><td>&nbsp;</td></tr>
+                <tr>
+                  <td colspan="2" align="left"><h4><script>document.write(WPS5G);</script></h4></td>
+                </tr>
+                <tr id="wps5gEnabled">
+                </tr>
+                <tr id="wps5gMethod">
+                </tr>
+                <tr id="wps5gClientPinCode">
+                </tr>
+                <tr id="wps5gPinCode">
+                </tr>
+                <script type="text/javascript">writeApplyCancel();</script>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+</div>
+<!-- End Save for Web Slices -->
+<script type="text/javascript">
+  writeWindow("cover");
+  writeWindow("waitWindow");
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+#!/bin/sh
+uci -q get dhcp.odhcpd && exit 0
+touch /etc/config/dhcp
+
+uci batch <<EOF
+set dhcp.odhcpd=odhcpd
+set dhcp.odhcpd.maindhcp=0
+set dhcp.odhcpd.leasefile=/tmp/hosts/odhcpd
+set dhcp.odhcpd.leasetrigger=/usr/sbin/odhcpd-update
+set dhcp.lan.dhcpv6=disabled
+set dhcp.lan.ra=server
+set dhcp.lan.startv6=4096
+set dhcp.lan.limitv6=4096
+set dhcp.lan.ra_maxinterval=6
+set dhcp.lan.ra_management=0
+commit dhcp
+EOF

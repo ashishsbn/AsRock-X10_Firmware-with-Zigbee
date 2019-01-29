@@ -1,0 +1,15 @@
+#!/bin/sh /etc/rc.common
+START=95
+
+start() {
+	. /usr/lib/ddns/dynamic_dns_functions.sh
+	start_daemon_for_all_ddns_sections "wan"
+
+	# X10 export function
+	[ -f /lib/openvpn/export_openvpn_config ] && . /lib/openvpn/export_openvpn_config
+}
+
+stop() {
+	killall -9 dynamic_dns_updater.sh
+}
+

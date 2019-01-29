@@ -1,0 +1,7 @@
+# Put your custom commands here that should be executed once
+# the system init finished. By default this file does nothing.
+#
+
+/bin/sh /usr/sbin/monitor_ap_sta.sh > /dev/null 2>&1
+
+exit 0

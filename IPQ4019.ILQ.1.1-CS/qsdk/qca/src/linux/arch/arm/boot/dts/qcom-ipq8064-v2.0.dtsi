@@ -1,0 +1,31 @@
+#include "qcom-ipq8064.dtsi"
+
+&soc {
+	pci@1b500000 {
+		compatible = "qcom,pcie-ipq8064-v2";
+	};
+	pci@1b700000 {
+		compatible = "qcom,pcie-ipq8064-v2";
+	};
+	pci@1b900000 {
+		compatible = "qcom,pcie-ipq8064-v2";
+	};
+	ss_phy_0: phy@110f8830 {
+		rx_eq = <2>;
+		tx_deamp_3_5db = <32>;
+		mpll = <0xa0>;
+	};
+	ss_phy_1: phy@100f8830 {
+		rx_eq = <2>;
+		tx_deamp_3_5db = <32>;
+		mpll = <0xa0>;
+	};
+
+	sata_phy: sata-phy@1b400000 {
+		tx_preemph_gen3 = <0x15>;
+		rx_eq = <4>;
+		mpll = <0xa0>;
+		term_off = <7>;
+	};
+
+};

@@ -1,0 +1,29 @@
+#!/bin/sh
+# X10 dhcpv6 renew lan address
+
+. /usr/share/libubox/jshn.sh
+. /lib/config/uci.sh
+
+# get wan type
+local proto="$(uci_get network wan proto)"
+local proto6="$(uci_get network wan6 proto)"
+
+echo "WAN:${proto}, WAN6:${proto6}"
+
+if [ "${proto}" == "pppoe" ] && [ "${proto6}" == "dhcpv6" ]; then
+	# get pppoe status
+	json_load "$(devstatus pppoe-wan)"
+	json_get_var pppoe_up up
+	echo "pppoe-wan, up:${pppoe_up}"
+
+	if [ "${pppoe_up}" == "1" ]; then
+		local ipv6prefix_br0
+		json_load "$(ifstatus wan6)"
+		json_select ipv6-prefix
+		json_select 1
+		json_get_var ipv6prefix_br0 address
+		#echo "${ipv6prefix_br0}" >> /var/log/ipv6prefix_br0.txt
+		uci_set pref-wan global ip6prefix "$ipv6prefix_br0"
+		uci_commit pref-wan
+	fi
+fi

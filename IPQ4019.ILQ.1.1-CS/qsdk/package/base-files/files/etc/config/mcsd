@@ -1,0 +1,4 @@
+config config 'config'
+	option Enable	        '0'
+	option SwitchInterface  'auto'
+	option SwitchLanVid     '1'

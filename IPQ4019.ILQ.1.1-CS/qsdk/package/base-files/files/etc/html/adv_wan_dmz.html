@@ -1,0 +1,187 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script> 
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+function fillDatalist()
+{
+  $.ajax({
+    url:'/f/getDashboardClientList',
+    type: "GET",
+    success: function(result) {
+      for (var i=1; i<=parseInt(result.client[0].num); i++) {
+        var option = $('<option value="' + result.client[i].ipAddr + '">' + 
+                     result.client[i].ipAddr + '(' + 
+                     decodeURIComponent(result.client[i].name) + ')' + '</option>');
+        $('#clientInfo').append(option);
+      }
+    },
+    error : function() {
+      console.log("post /f/getDashboardClientList error");
+    }
+  });
+}
+
+function setData(url)
+{
+  var argu, dmzEnabled, hostIpAddr;
+  
+  argu = "";
+  dmzEnabled = parseValueOfOnOff($('#dmzEnabled').val());
+  argu += "&dmzEnabled=" + dmzEnabled;
+  if (dmzEnabled == "1") {
+    hostIpAddr = $('input#hostIpAddr').val();
+    if (!checkIPAddr(hostIpAddr)) {
+      alert(InvalidIpAddress);
+      $('input#hostIpAddr').focus();
+      return false;
+    }
+    argu += "&hostIpAddr="+hostIpAddr;
+  }
+  
+  $.ajax({
+    url: url,
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log(result);
+    },
+    error : function() {
+      console.log("post " + url + " error");
+    }
+  });
+
+  return true;
+}
+
+function checkDmzState(switchThis)
+{
+  if ($('#' + switchThis.id).val() == "ON") {
+    $('input#hostIpAddr').removeAttr('disabled');
+  }
+  else {
+    $('input#hostIpAddr').attr('disabled', 'disabled');
+  }
+}
+
+function afterAssign()
+{
+  checkDmzState(document.getElementById('dmzEnabled'));
+}
+
+$(document).ready(function() {
+  isLoggedIn();
+  console.log("document ready!!!");
+  
+  /* Setup the Menu, expand the WAN items */
+  $('#wanMenu').parent().removeClass('menu');
+  $('#wanMenu').parent().addClass('mainmenu');
+  $('#wanMenu').find('.submenu').addClass('show_menu');
+  $('.show_menu').show();
+  $('#wanDmz').removeClass('show_menu');
+  $('#wanDmz').removeClass('submenu');
+  $('#wanDmz').addClass('mainsubmenu');
+  $('#wanDmz').addClass('show_menu');
+
+  /* Empty category arrays */
+  emptyElementArrays();
+  
+  text(WANHostIPAddr, "hostIpAddr");
+  addDatalist("input#hostIpAddr", "clientInfo");
+  switchOnOff(WANDMZ, "dmzEnabled", checkDmzState);
+  
+  /* Get the data and fill the DOM */
+  var dmzInfo = getData("/f/getDmz");
+  if (dmzInfo != null) { 
+    /* Put the value into the DOM by key (id) */
+    $.each(dmzInfo, function(key, value) {
+      console.log("key : " + key + " value : " + value);
+      doAssignValues(key, value);
+    });
+	afterAssign();
+  }
+  
+  fillDatalist();
+  
+  /* Apply action */
+  $('#Apply').click(function(event) {
+    console.log("apply click...");
+    if (setData("/f/setDmz")) {
+      showWindow("waitWindow");
+      countdownWindow("waitingDig");
+    }
+  });
+  
+  /* Cancel action */
+  $('#Cancel').click(function(event) {
+    console.log("cancel click...");
+    refresh();
+  });
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" align="center" valign="top">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                <script type="text/javascript">writeLeftMenu();</script> 
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top"><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td colspan="2" align="left"><h4><script>document.write(WANDMZ);</script></h4></td>
+                </tr>
+                <tr>
+                   <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                </tr>
+                <tr id="dmzEnabled">
+                </tr>
+                <tr id="hostIpAddr">
+                </tr>
+                <script type="text/javascript">writeApplyCancel();</script>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+</div>
+<!-- End Save for Web Slices -->
+<script type="text/javascript">
+  writeWindow("cover");
+  writeWindow("waitWindow");
+</script>
+</body>
+</html>

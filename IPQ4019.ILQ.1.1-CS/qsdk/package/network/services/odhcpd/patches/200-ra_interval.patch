@@ -1,0 +1,17 @@
+odhcpd: Modify MAX interval of Router Advertisement
+
+This patch modifies MaxRtrAdvInterval from 30mins to 60sec.
+
+From: Bryce_Chen <Bryce1_Chen@pegatroncorp.com>
+
+--- a/src/router.h
++++ b/src/router.h
+@@ -31,7 +31,7 @@
+ 
+ 
+ #define MaxValidTime 65535
+-#define MaxRtrAdvInterval 1800
++#define MaxRtrAdvInterval 60
+ 
+ #define ND_RA_FLAG_PROXY	0x4
+ #define ND_RA_PREF_HIGH	(1 << 3)

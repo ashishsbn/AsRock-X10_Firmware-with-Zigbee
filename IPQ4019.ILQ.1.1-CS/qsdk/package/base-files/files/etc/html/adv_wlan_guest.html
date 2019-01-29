@@ -1,0 +1,308 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+var guest2gIdList = ["guest2gEnable", "guest2gSsid", "guest2gPassword", "guest2gTime", "guest2gUnlimited"];
+var guest5gIdList = ["guest5gEnable", "guest5gSsid", "guest5gPassword", "guest5gTime", "guest5gUnlimited"];
+
+function setData(url)
+{
+  var argu, i, guestIdList, ssid, password;
+  
+  argu = "";
+  
+  for (i = 0; i < 2; i++) {
+    if (i == 0) {
+      guestIdList = guest2gIdList;
+    }
+    else {
+      guestIdList = guest5gIdList;
+      argu += "&";
+    }
+    argu += guestIdList[0] + "=" + ($('input#' + guestIdList[0]).prop('checked')?"1":"0");
+    ssid = $('input#' + guestIdList[1]).val();
+    if (!checkSSID(ssid) || !checkSpace(ssid)) {
+      alert(WirelessWarn1);
+      $('input#' + guestIdList[1]).focus();
+      return false;
+    }
+    argu += "&" + guestIdList[1] + "=" + encodeURIComponent(ssid);
+    
+    password = $('input#' + guestIdList[2]).val();
+    if (password.length < 8) {
+      alert(WirelessWarn2);
+      $('input#' + guestIdList[2]).focus();
+      return false;
+    }
+    else if (password.length > 63) {
+      alert(WirelessWarn3);
+      $('input#' + guestIdList[2]).focus();
+      return false;
+    }
+    else if (!checkSpace(password)) {
+      alert(WirelessWarnPsk);
+      $('input#' + guestIdList[2]).focus();
+      return false;
+    }
+    argu += "&" + guestIdList[2] + "=" + encodeURIComponent(password);
+    
+    if ($('input#' + guestIdList[4]).prop('checked')) {
+      argu += "&" + guestIdList[3] + "=0";
+    }
+    else {
+      argu += "&" + guestIdList[3] + "=" + $('select#' + guestIdList[3]).val();
+    }
+  }
+  console.log(argu);
+  
+  $.ajax({
+    url: url,
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log(result);
+    },
+    error : function() {
+      console.log("post " + url + " error");
+    }
+  });
+  
+  return true;
+}
+
+function updateUnlimited()
+{
+  if ($('input#guest2gUnlimited').prop('checked')) {
+    $('#guest2gTime').attr('disabled', 'disabled');
+  }
+  else {
+    $('#guest2gTime').removeAttr('disabled');
+  }
+  
+  if ($('input#guest5gUnlimited').prop('checked')) {
+    $('#guest5gTime').attr('disabled', 'disabled');
+  }
+  else {
+    $('#guest5gTime').removeAttr('disabled');
+  }
+}
+
+function guestNetworkTable(id)
+{
+  var guestTable, guestArray;
+  var guestWidth, guestFirstRow, guestStart, guestIdList;
+  
+  guestWidth = [35, 25, 40];
+  guestFirstRow = [GuestNetSSID, GuestNetPassword, ParTime];
+  
+  guestArray = new Array(2);
+  for (i = 0; i < guestArray.length; i++) {
+    guestArray[i] = new Array(3);
+  }
+  guestArray[0][0] = "<td width=\"5%\"></td>";
+  
+  guestArray[0][1] = "<td align=\"left\" class=\"style6-1\" width=\"68%\" background=\"images/box_03.png\">";
+  guestArray[0][1] += "<table width=\"100%\" border=\"0\" cellspacing=\"3\" cellpadding=\"3\">";
+  guestArray[0][1] += "<tr>";
+  for (i = 0; i < guestFirstRow.length; i++) {
+    guestArray[0][1] += "<td width=\"" + guestWidth[i] + "%\"align=\"center\""
+	               + "bgcolor=\"#666666\"><h5>" + guestFirstRow[i] + "</h5></td>";
+  }
+  guestArray[0][1] += "</tr>";
+  guestArray[0][1] += "<tr>";
+  
+  var tdStart = "<td align=\"center\">";
+  if (id.indexOf("2g") > -1) {
+    guestIdList = guest2gIdList;
+  }
+  else {
+    guestIdList = guest5gIdList;
+  }
+  guestArray[1][0] = tdStart;
+  guestArray[1][0] += "<input type=\"checkbox\" id=\"" + guestIdList[0] + "\">";
+  guestArray[1][0] += "<input type=\"text\" maxlength=\"32\" id=\"" + guestIdList[1] + "\" size=\"16\">";
+  guestArray[1][0] += "</td>";
+  guestArray[1][1] = tdStart;
+  guestArray[1][1] += "<input type=\"text\" size=\"8\" maxlength=\"63\" id=\"" + guestIdList[2] + "\">";
+  guestArray[1][1] += "</td>";
+  guestArray[1][2] = "<td align=\"center\" class=\"style6\" style=\"padding:0px;\">";
+  guestArray[1][2] += "<select size=\"1\" name=\"" + guestIdList[3] + "\" id=\"" + guestIdList[3] + "\">";
+  for (i = 1; i < 25; i++) {
+    guestArray[1][2] += "<option value=\"" + i + "\">" + i + "</option>";
+  }
+  guestArray[1][2] += "</select>";
+  guestArray[1][2] += "&nbsp;<span>" + SysLoghour + "</span>";
+  guestArray[1][2] += "&nbsp;&nbsp;<input type=\"checkbox\" id=\"" + guestIdList[4] + "\"" +
+                      "onclick=\"updateUnlimited();\">" +
+                      "<span>" + DashGuestUnlimited + "</span></input>";
+  guestArray[1][2] += "</td>";
+  
+  for (i = 0; i < guestArray[1].length; i++) {
+    guestArray[0][1] += guestArray[1][i];
+  }
+  guestArray[0][1] += "</tr></table></td>";
+  
+  guestArray[0][2] = "<td width=\"30%\"></td>";
+
+  guestTable = "";
+  for (i = 0; i < guestArray[0].length; i++) {
+    guestTable += guestArray[0][i];
+  }
+  
+  $('#' + id).append(guestTable);
+}
+
+$(document).ready(function(){
+  console.log("document ready!!!");
+  isLoggedIn();
+  
+  /* Setup the Menu, expand the Wireless items */
+  $('#wirelessMenu').parent().removeClass('menu');
+  $('#wirelessMenu').parent().addClass('mainmenu');
+  $('#wirelessMenu').find('.submenu').addClass('show_menu');
+  $('.show_menu').show();
+  $('#wirelessGuest').removeClass('show_menu');
+  $('#wirelessGuest').removeClass('submenu');
+  $('#wirelessGuest').addClass('mainsubmenu');
+  $('#wirelessGuest').addClass('show_menu');
+
+  /* Empty category arrays */
+  emptyElementArrays();
+  
+  /* Draw items */
+  guestNetworkTable("guest2gTable");
+  guestNetworkTable("guest5gTable");
+  
+  /* Get the data and fill the DOM */
+  var wlanGuestInfo = getData("/f/getWlanApGuest");
+  if (wlanGuestInfo != null) {
+    wlanGuestInfo.guest2gSsid = decodeURIComponent(wlanGuestInfo.guest2gSsid);
+    wlanGuestInfo.guest2gPassword = decodeURIComponent(wlanGuestInfo.guest2gPassword);
+    wlanGuestInfo.guest5gSsid = decodeURIComponent(wlanGuestInfo.guest5gSsid);
+    wlanGuestInfo.guest5gPassword = decodeURIComponent(wlanGuestInfo.guest5gPassword);
+    /* Put the value into the DOM by key (id) */
+    $.each(wlanGuestInfo, function(key, value) {
+      console.log("key : " + key + " value : " + value);
+      if (key.indexOf("Enable") > -1) {
+        if (value == "1") {
+          $('input#' + key).prop("checked", true);
+        }
+        else {
+          $('input#' + key).prop("checked", false);
+        }
+      }
+      else if (key.indexOf("Time") > -1) {
+        if (value=="0") {
+          if (key.indexOf("2g") > -1) {
+            $('input#guest2gUnlimited').prop("checked", true);
+          }
+          else if (key.indexOf("5g") > -1) {
+            $('input#guest5gUnlimited').prop("checked", true);
+          }
+          updateUnlimited();
+        }
+        else {
+          $('select#' + key).val(value);
+        }
+      }
+      else {
+        $('input#' + key).val(value);
+      }
+    });
+  }
+  
+  /* Apply action */
+  $('#Apply').click(function(event) {
+    console.log("apply click...");
+    if (setData("/f/setWlanApGuest")) {
+      //Need more time to reload both wireless interface
+      waitTimeout=30;
+      showWindow("waitWindow");
+      countdownWindow("waitingDig");
+    }
+  });
+  
+  /* Cancel action */
+  $("#Cancel").click(function(event) {
+    console.log("cancel click...");
+    refresh();
+  });
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" align="center" valign="top">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                <script type="text/javascript">writeLeftMenu();</script> 
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top"><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td colspan="2" align="left"><h4><script>document.write(GuestNet);</script></h4></td>
+                </tr>
+                <tr>
+                   <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                </tr>
+                <tr><td>&nbsp;</td></tr>
+                <tr><td>&nbsp;</td></tr>
+				<tr>
+                  <td colspan="2" align="left"><h4><script>document.write(GuestNet2G);</script></h4></td>
+                </tr>
+                <tr id="guest2gTable">
+                </tr>
+                <tr><td>&nbsp;</td></tr>
+                <tr><td>&nbsp;</td></tr>
+				<tr>
+                  <td colspan="2" align="left"><h4><script>document.write(GuestNet5G);</script></h4></td>
+                </tr>
+                <tr id="guest5gTable">
+                </tr>
+                <script type="text/javascript">writeApplyCancel();</script>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+</div>
+<!-- End Save for Web Slices -->
+<script type="text/javascript">
+  writeWindow("cover");
+  writeWindow("waitWindow");
+</script>
+</body>
+</html>

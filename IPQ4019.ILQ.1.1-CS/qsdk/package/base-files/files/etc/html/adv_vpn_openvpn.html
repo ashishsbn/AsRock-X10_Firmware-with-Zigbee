@@ -1,0 +1,245 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+
+function setData(url) {
+
+  argu = "&enable=" + parseValueOfOnOff($('#enable').val());
+  
+  console.log("argu " + argu);
+
+  $.ajax({
+    url: url,
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      //console.log(result);
+    },
+    error : function() {
+      //console.log("post " + url + " error");
+    }
+  });
+
+  return true;
+}
+
+function checkstatus(enable)
+{
+  if(enable=="0"){
+    document.getElementById("export").disabled = true;
+    document.getElementById("export2").disabled = true;
+
+  } else {
+    document.getElementById("export").disabled = false;
+    document.getElementById("export2").disabled = false;
+  }
+}
+
+function exportConfigurationAll()
+{
+  document.getElementById('invisible').src = "/f/exportOpenVPNConfAll";
+}
+
+function exportConfigurationLocal()
+{
+  document.getElementById('invisible').src = "/f/exportOpenVPNConfLocal";
+}
+
+$(document).ready(function() {
+  //console.log("document ready!!!");
+  isLoggedIn();
+
+  /* Setup the Menu, expand the VPN items */
+  $('#vpnMenu').parent().removeClass('menu');
+  $('#vpnMenu').parent().addClass('mainmenu');
+  $('#vpnMenu').find('.submenu').addClass('show_menu');
+  $('.show_menu').show();
+  $('#vpnOpenVpn').removeClass('show_menu');
+  $('#vpnOpenVpn').removeClass('submenu');
+  $('#vpnOpenVpn').addClass('mainsubmenu');
+  $('#vpnOpenVpn').addClass('show_menu');
+
+  /* Empty category arrays */
+  emptyElementArrays();
+
+  /* */
+  switchOnOff(OpenvpnServerEnable, "enable");
+
+  /* Get the data and fill the DOM */
+  var openvpnInfo = getData("/f/getOpenVPNInfo");
+  if (openvpnInfo != null) { 
+    /* Put the value into the DOM by key (id) */
+    $.each(openvpnInfo, function(key, value) {
+      console.log("key : " + key + " value : " + value);
+      doAssignValues(key, value);
+    });
+
+    $("#WANIPAddress").text(openvpnInfo.WANIPAddress);
+
+    if (parseInt(openvpnInfo.ddnsEnabled)==1 && openvpnInfo.ddnsHostName.length>0) {
+      $("#WANDDNSDomain").hide();
+      $("#WANDDNSDomainName").html(openvpnInfo.ddnsHostName);
+    }
+    else {
+      $("#WANDDNSDomainName").hide();
+    }
+  }
+
+  // update UI component
+  checkstatus(openvpnInfo.enable);
+
+  // Adjust layout
+  if ($("#langSelect").val() == "jp") {
+    $("#serverIp").width("45%");
+    $("#serverIpValue").width("55%");
+    $("#domain").width("45%");
+    $("#domainValue").width("55%");
+    $("#config").width("45%");
+    $("#configValue").width("55%");
+    $("#config2").width("45%");
+    $("#config2Value").width("55%");
+    $("#forWindows").width("45%");
+    $("#forWindowsValue").width("55%");
+    $("#forMacValue").width("55%");
+    $("#forIosValue").width("55%");
+    $("#forAndroidValue").width("55%");
+  }
+
+  $.ajax({
+    url: "/f/getOpenVPNPublicIpAddrInfo",
+    type: "GET",
+    dataType: "json",
+    success: function(result) {
+      if (result.publicIpAddr != "") {
+        $("#ipify").html("<a href=\"https://www.ipify.org\" target=\"_blank\">(Public IP: " + result.publicIpAddr + ")</a>");
+      }
+      else {
+        $("#ipify").html("");
+      }
+    },
+    error : function() {
+      console.log("get /f/getOpenVPNPublicIpAddrInfo error");
+      $("#ipify").html("");
+    }
+  });
+
+  /* Apply action */
+  $('[id=Apply]').click(function(event) {
+    //console.log("apply click...");
+    if (setData("/f/setOpenVPNInfo")) {
+      waitTimeout=15;
+      showWindow("waitWindow");
+      countdownWindow("waitingDig");
+    }
+  });
+  
+  /* Cancel action */
+  $("[id=Cancel]").click(function(event) {
+    //console.log("cancel click...");
+    refresh();
+  });
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" align="center" valign="top">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                <script type="text/javascript">writeLeftMenu();</script> 
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top"><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                  <tr>
+                    <td colspan="2" align="left"><h4><script>document.write(OpenvpnServer);</script></h4></td>
+                  </tr>
+                  <tr>
+                    <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                  </tr>
+                  <tr id="enable">
+                  </tr>
+                  <tr>
+                    <td align="left" id="serverIp" class="style6" height="30" width="35%"><script>document.write(OpenvpnServerIP);</script></td>
+                    <td align="left" id="serverIpValue" class="style6-2" width="65%"><span id="WANIPAddress"></span> <span id="ipify"></span></td>
+                  </tr>
+                  <tr>
+                    <td align="left" id="domain" class="style6" height="30" width="35%"><script>document.write(OpenvpnDomainName);</script></td>
+                    <td align="left" id="domainValue" class="style6-2" width="65%">
+                      <span id="WANDDNSDomain"><a href="adv_wan_ddns.html"><script>document.write(OpenvpnDDNSSetUp);</script></a></span>
+                      <span id="WANDDNSDomainName"></span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <iframe id="invisible" style="display:none;"></iframe>
+                    <td align="left" id="config" class="style6" height="30" width="35%"><span><script>document.write(OpenvpnExportFile);</script></span></td>
+                    <td align="left" id="configValue" class="style6-2" width="65%">
+                      <button id="export" disabled="" style="height:30" onclick="exportConfigurationAll()">&nbsp;<script>document.write(OpenvpnExportButton);</script>&nbsp;</button> <span style="color:#c0c0c0;font-size:12px"><script>document.write(OpenvpnAllFlow);</script></span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td align="left" id="config2" class="style6" height="30" width="35%">&nbsp;</td>
+                    <td align="left" id="confgi2Value" class="style6-2" width="65%">
+                      <button id="export2" disabled="" style="height:30" onclick="exportConfigurationLocal()">&nbsp;<script>document.write(OpenvpnExportButton);</script>&nbsp;</button> <span style="color:#c0c0c0;font-size:12px"><script>document.write(OpenvpnLocal);</script></span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td align="left" id="forWindows" class="style6" rowspan="4" valign="top" width="35%"><script>document.write(OpenvpnDLclient);</script></td>
+                    <td align="left" id="forWindowsValue" class="style6-2" width="65%"><a href="https://openvpn.net/index.php/open-source/downloads.html" target="_blank"><script>document.write(OpenvpnClientWindows);</script></a></td>
+                  </tr>
+                  <tr>
+                    <td align="left" id="forMacValue" class="style6-2" width="65%"><a href="https://openvpn.net/index.php/access-server/docs/admin-guides/183-how-to-connect-to-access-server-from-a-mac.html" target="_blank"><script>document.write(OpenvpnClientMac);</script></a></td>
+                  </tr>
+                  <tr>
+                    <td align="left" id="forIosValue" class="style6-2" width="65%"><a href="https://itunes.apple.com/us/app/openvpn-connect/id590379981" target="_blank"><script>document.write(OpenvpnClientIos);</script></a></td>
+                  </tr>
+                  <tr>
+                    <td align="left" id="forAndroidValue" class="style6-2" width="65%"><a href="https://play.google.com/store/apps/details?id=net.openvpn.openvpn" target="_blank"><script>document.write(OpenvpnClientAndroid);</script></a></td>
+                  </tr>
+                  <script type="text/javascript">writeApplyCancel();</script>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+</div>
+<!-- End Save for Web Slices -->
+<script type="text/javascript">
+  writeWindow("cover");
+  writeWindow("waitWindow");
+</script>
+</body>
+</html>

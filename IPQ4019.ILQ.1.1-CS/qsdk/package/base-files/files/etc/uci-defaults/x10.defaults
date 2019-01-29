@@ -1,0 +1,83 @@
+#!/bin/sh
+
+uci set network.wan.hostname="ASRock-X10"
+uci commit network
+
+# Set default values according to board config.
+WPA_KEY=`boardcfg -g WPA`
+WIFI_REG=`boardcfg -g WLAN_REG`
+WPS_PIN=`boardcfg -g WPS_PIN`
+
+if [ "$WPA_KEY" != "empty" -a "$WPA_KEY" != "" ]; then
+	uci set wireless.ath0.key="$WPA_KEY"
+	uci set wireless.ath1.key="$WPA_KEY"
+fi
+
+if [ "$WIFI_REG" != "empty" -a "$WIFI_REG" != "" ]; then
+	uci set wireless.wifi0.country="$WIFI_REG"
+	uci set wireless.wifi1.country="$WIFI_REG"
+	# set default values for each domain.
+	case "$WIFI_REG" in
+		TW)
+			uci set system.@system[0].langurage="tw"
+			ln -sf /etc/html/lang/tw.json /etc/html/lang/multilanguage.js
+			ln -sf /etc/html/lang/tw.css /etc/html/default.css
+			uci set system.@system[0].timezone="IST-5:30"
+			uci set system.@system[0].city="Asia/Kolkata"
+			sed -i 's/ZSTACK_TX_POWER = 20/ZSTACK_TX_POWER = 15/g' /etc/config.ini
+			;;
+		JP)
+			# JP needs specific country code ID
+			uci set wireless.wifi0.country="4015"
+			uci set wireless.wifi1.country="4015"
+			uci set system.@system[0].langurage="jp"
+			ln -sf /etc/html/lang/jp.json /etc/html/lang/multilanguage.js
+			ln -sf /etc/html/lang/jp.css /etc/html/default.css
+			uci set system.@system[0].timezone="JST-9"
+			uci set system.@system[0].city="Asia/Tokyo"
+			# special requirement for Japan, The MTU is 1438 + 8 (PPPoE header)
+			uci set pref-wan.pppoe.mtu="1446"
+			uci commit pref-wan
+			sed -i 's/ZSTACK_TX_POWER = 20/ZSTACK_TX_POWER = 9/g' /etc/config.ini
+			;;
+		US)
+			uci set system.@system[0].langurage="en"
+			ln -sf /etc/html/lang/en.json /etc/html/lang/multilanguage.js
+			ln -sf /etc/html/lang/en.css /etc/html/default.css
+			uci set system.@system[0].timezone="EST5EDT,M3.2.0,M11.1.0"
+			uci set system.@system[0].city="America/New York"
+			# update the ZigBee Tx power
+			sed -i 's/ZSTACK_TX_POWER = 20/ZSTACK_TX_POWER = 15/g' /etc/config.ini
+			;;
+		AU)
+			uci set system.@system[0].langurage="en"
+			ln -sf /etc/html/lang/en.json /etc/html/lang/multilanguage.js
+			ln -sf /etc/html/lang/en.css /etc/html/default.css
+			uci set system.@system[0].timezone="EST-10EST,M10.1.0,M4.1.0/3"
+			uci set system.@system[0].city="Australia/Sydney"
+			sed -i 's/ZSTACK_TX_POWER = 20/ZSTACK_TX_POWER = 15/g' /etc/config.ini
+			;;
+		FR)
+			uci set system.@system[0].langurage="en"
+			ln -sf /etc/html/lang/en.json /etc/html/lang/multilanguage.js
+			ln -sf /etc/html/lang/en.css /etc/html/default.css
+			uci set system.@system[0].timezone="CET-1CEST,M3.5.0,M10.5.0/3"
+			uci set system.@system[0].city="Europe/Berlin"
+			sed -i 's/ZSTACK_TX_POWER = 20/ZSTACK_TX_POWER = 7/g' /etc/config.ini
+			;;
+	esac
+	uci commit system
+fi
+
+if [ "$WPS_PIN" != "empty" -a "$WPS_PIN" != "" ]; then
+	uci set wireless.ath0.wps_pin="$WPS_PIN"
+	uci set wireless.ath1.wps_pin="$WPS_PIN"
+fi
+
+uci commit wireless
+
+# disable telnetd & sshd
+if [ ! -f /usr/sbin/x10-diag ]; then
+	/etc/init.d/telnet disable
+	/etc/init.d/dropbear enable
+fi

@@ -1,0 +1,12 @@
+LMHT-LM 78      LHT_Sensor
+LMHT    78      LHT_Sensor
+RC      2       Remote_Control
+PSMP5   48      Power_Plug
+PSSP5   24      In_Wall_Switch_Module
+PSMD    53      In_Wall_Dimmer
+DC      4       Door_Contact
+WS15    5       Water_leak
+SD      11      Smoke_Detector
+SD8ELR3 11      Smoke_Detector
+SVGS    39      Shock_Glass_Break
+

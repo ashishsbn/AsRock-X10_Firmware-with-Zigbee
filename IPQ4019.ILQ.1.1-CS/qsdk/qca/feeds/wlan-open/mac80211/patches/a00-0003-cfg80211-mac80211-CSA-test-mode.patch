@@ -1,0 +1,38 @@
+--- a/net/mac80211/cfg.c
++++ b/net/mac80211/cfg.c
+@@ -2885,10 +2885,6 @@ __ieee80211_channel_switch(struct wiphy
+ 	if (sdata->wdev.cac_started)
+ 		return -EBUSY;
+ 
+-	if (cfg80211_chandef_identical(&params->chandef,
+-				       &sdata->vif.bss_conf.chandef))
+-		return -EINVAL;
+-
+ 	/* don't allow another channel switch if one is already active. */
+ 	if (sdata->vif.csa_active)
+ 		return -EBUSY;
+--- a/net/wireless/nl80211.c
++++ b/net/wireless/nl80211.c
+@@ -1,4 +1,4 @@
+-/*
++	/*
+  * This is the new netlink-based wireless configuration interface.
+  *
+  * Copyright 2006-2010	Johannes Berg <johannes@sipsolutions.net>
+@@ -6687,6 +6687,16 @@ skip_beacons:
+ 	if (err)
+ 		return err;
+ 
++	if (cfg80211_chandef_identical(&params.chandef,
++				       &wdev->preset_chandef)) {
++		printk(KERN_INFO "Enabling DFS test mode - set AVAILABLE\n");
++		cfg80211_set_dfs_state(&rdev->wiphy,
++				       &params.chandef,
++				       NL80211_DFS_AVAILABLE);
++	} else {
++		printk(KERN_INFO "Disabling DFS test mode\n");
++	}
++
+ 	if (!cfg80211_reg_can_beacon_relax(&rdev->wiphy, &params.chandef,
+ 					   wdev->iftype))
+ 		return -EINVAL;

@@ -1,0 +1,66 @@
+#!/bin/sh /etc/rc.common
+
+. /lib/config/uci.sh
+
+START=98
+USE_PROCD=1
+PROG=/usr/sbin/orbweb_mqttd
+
+section_enabled() {
+	config_get_bool enable  "$1" 'enable'  0
+	config_get_bool enabled "$1" 'enabled' 0
+	[ $enable -gt 0 ] || [ $enabled -gt 0 ]
+}
+
+orbweb_add_instance() {
+	local url="$1"
+
+	procd_open_instance
+	procd_set_param command "$PROG"	\
+		--url "$url" 
+	procd_set_param respawn ${respawn_threshold:-60} ${respawn_timeout:-5} ${respawn_retry:-5}
+	procd_close_instance
+}
+
+start_instance() {
+	local s="$1"
+	local ssid
+	config_get ssid "$s" ssid
+	if [ -z "${ssid}" ]; then
+		local boardcfg_ssid="$(boardcfg -g SID)"
+		echo "acquire ssid ${boardcfg_ssid}"
+		uci_set orbweb "$s" ssid ${boardcfg_ssid}
+		uci_commit orbweb
+	fi
+
+	section_enabled "$s" || {
+		return 1
+	}
+	
+	local file_config
+	config_get file_config "$s" config
+	if [ -f "${file_config}" ] && [ ! -z "${file_config}" ]; then
+		local url
+		config_get url "$s" url
+		echo "url: ${url}"
+		orbweb_add_instance "${url}"
+		return
+	fi
+}
+
+start_service() {
+
+	# kill all orbweb_mqttd processes
+	[ ! -z $(pidof orbweb_mqttd) ] && kill -9 $(pidof orbweb_mqttd)
+
+	#echo "[$(date)] ########### Starting orbweb_mqttd..." > /dev/console
+	logger -t warning orbweb start
+	config_load orbweb
+	config_foreach start_instance orbweb_mqttd
+}
+
+service_triggers()
+{
+	procd_add_reload_trigger orbweb
+}
+

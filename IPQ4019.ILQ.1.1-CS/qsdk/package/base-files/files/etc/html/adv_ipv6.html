@@ -1,0 +1,640 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+
+var dnsCheckDhcp;
+var lanReboot, protolan_old, ip6DhcpStart_old, ip6DhcpEnd_old;
+var protoV4, proto_old;
+
+function setData(url) {
+  var dnsCheck = 1;
+
+  var proto;
+  if ($('#enableIpv6').val() == "OFF") {
+    proto = "none";
+  }
+  else {
+    proto = $('select#proto').val();
+  }
+  argu = "&proto="+proto;
+  argu += "&AdvSendAdvert=" + parseValueOfOnOff($('#AdvSendAdvert').val());
+
+  if(proto == "none") {
+    // do nothing
+  } else if(proto=="dhcpv6") {
+    var wanDnsCheck = $('input#IPv6DNSMode').prop('checked');
+    if(!wanDnsCheck) {
+      dnsCheck = 0;
+      var primary = $('input#autoDNS1').val();
+      var secondary = $('input#autoDNS2').val();
+      if(!checkIPv6Addr(primary)){
+        alert(WANWarn2);
+        $('input#autoDNS1').focus();
+        return false;
+      }
+      argu += "&dnsCheck="+dnsCheck+"&primary="+primary;
+
+      if(secondary!="") {
+        if(!checkIPv6Addr(secondary)) {
+          alert(WANWarn2);
+          $('input#autoDNS2').focus();
+          return false;
+        }
+        argu += "&secondary="+secondary;
+      }
+    
+    } else {
+      argu += "&dnsCheck="+dnsCheck;
+    }
+  } else if(proto=="static") {
+    var ip6addr = $('input#ip6addr').val();
+    if(!checkIPv6Addr(ip6addr)) {
+      alert(InvalidIpAddress);
+      $('input#ip6addr').focus();
+      return false;
+    }
+    var ip6gw = $('input#ip6gw').val();
+    if(!checkIPv6Addr(ip6gw)) {
+      alert(InvalidGate);
+      $('input#ip6gw').focus();
+      return false;
+    }
+    argu += "&ip6addr="+ip6addr+"&ip6gw="+ip6gw;
+
+    var staticDNS1 = $('input#staticDNS1').val();
+    var staticDNS2 = $('input#staticDNS2').val();
+    if(!checkIPv6Addr(staticDNS1)) {
+      alert(WANWarn2);
+      $('input#staticDNS1').focus();
+      return false;
+    }
+    argu += "&staticDNS1="+staticDNS1;
+    if(staticDNS2!="") {
+      if(!checkIPv6Addr(staticDNS2)) {
+        alert(WANWarn2);
+        $('input#staticDNS2').focus();
+        return false;
+      }
+      argu += "&staticDNS2="+staticDNS2;
+    }
+
+  } else if(proto=="6to4") {
+    var ipv4RelayServerIpCheck = $('input#relayServer').prop('checked');
+
+    if(!ipv4RelayServerIpCheck) {
+      var ipv4RelayServerIp = $('input#ipv4RelayServerIp').val();
+      if(!checkIPAddr(ipv4RelayServerIp)) {
+        alert(InvalidIpAddress);
+        $('input#ipv4RelayServerIp').focus();
+        return false;
+      }
+      argu += "&ipv4RelayServerIpCheck=0"+"&ipv4RelayServerIp="+ipv4RelayServerIp;
+    } else {
+      argu += "&ipv4RelayServerIpCheck=1";
+    }
+
+    var T6to4DNS1 = $('input#T6to4DNS1').val();
+    var T6to4DNS2 = $('input#T6to4DNS2').val();
+    if(T6to4DNS1!="") {
+      if(!checkIPv6Addr(T6to4DNS1)) {
+        alert(WANWarn2);
+        $('input#T6to4DNS1').focus();
+        return false;
+      }
+      argu += "&T6to4DNS1="+T6to4DNS1;
+    }
+    if(T6to4DNS2!="") {
+      if(!checkIPv6Addr(T6to4DNS2)) {
+        alert(WANWarn2);
+        $('input#T6to4DNS2').focus();
+        return false;
+      }
+      argu += "&T6to4DNS2="+T6to4DNS2;
+    }
+  }
+
+  if(proto!="none") {
+    var protolan = $('select#protolan').val();
+    argu += "&protolan="+protolan;
+
+    var ip6prefix = $('input#ip6prefix').val();
+    // dhcpv6@PPPoEv4, 6to4 do not need LAN IP
+    if(proto=="6to4") {
+      // do nothing
+    } else if((protoV4=="pppoe")&&(proto=="dhcpv6")) {
+      // do nothing
+    } else {
+      if(!checkIPv6Addr(ip6prefix)) {
+        alert(InvalidIpAddress);
+        $('input#ip6prefix').focus();
+        return false;
+      } else {
+        argu += "&ip6prefix="+ip6prefix;
+      }
+    }
+    
+    if(protolan=="server") {
+      var ip6DhcpStart = $('input#ip6DhcpStart').val();
+      var ip6DhcpEnd = $('input#ip6DhcpEnd').val();
+      if(!is4DigitHex(ip6DhcpStart)){
+        alert(DHCPv6Warn);
+        $('input#ip6DhcpStart').focus();
+        return false;
+      }
+      if(!is4DigitHex(ip6DhcpEnd)){
+        alert(DHCPv6Warn);
+        $('input#ip6DhcpEnd').focus();
+        return false;
+      }
+      if(!isValidDhcpV6Range(ip6DhcpStart, ip6DhcpEnd)) {
+        alert(LANWarn6);
+        $('input#ip6DhcpEnd').focus();
+        return false;
+      }
+      argu += "&ip6DhcpStart="+ip6DhcpStart+"&ip6DhcpEnd="+ip6DhcpEnd;
+      if((ip6DhcpStart_old!=ip6DhcpStart)||(ip6DhcpEnd_old!=ip6DhcpEnd)||(protolan_old!=protolan)) {
+        lanReboot = 1;
+      }
+    }
+    console.log("LAN Reboot " + lanReboot);
+  }
+
+  console.log("argu " + argu);
+
+  $.ajax({
+    url: url,
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      //console.log(result);
+    },
+    error : function() {
+      //console.log("post " + url + " error");
+    }
+  });
+
+  return true;
+}
+
+function setIpv6WANStat() {
+  var dnsCheck, ipv6Lan=1;
+  if(dnsCheckDhcp=="0") {
+    dnsCheck = false;
+  } else {
+    dnsCheck = true;
+  }
+
+  if ($('#enableIpv6').val() == "OFF") {
+    index = 0;
+  }
+  else {
+    proto = $('select#proto').val();
+    if(proto == "dhcpv6") {
+      index = 1;
+    } else if(proto == "static") {
+      index = 2;
+    } else if(proto == "6to4") {
+      index = 3;
+    }
+  }
+
+  if(index==0) { // none
+    document.getElementById("autoIpv6Table").style.display="none";
+    document.getElementById("staticIpv6Table").style.display="none";
+    document.getElementById("T6to4Table").style.display="none";
+    document.getElementById("lanSetupTable").style.display="none";
+    document.getElementById("dnsTable").style.display="none";
+  } else if(index==1) { // dhcpv6
+    document.getElementById("autoIpv6Table").style.display="";
+    document.getElementById("staticIpv6Table").style.display="none";
+    document.getElementById("T6to4Table").style.display="none";
+    document.getElementById("lanSetupTable").style.display="";
+    checkAutoDns(dnsCheck);
+    if(protoV4=="pppoe") {
+      ipv6Lan=0;
+    }
+  } else if(index==2) { // static 
+    document.getElementById("autoIpv6Table").style.display="none";
+    document.getElementById("staticIpv6Table").style.display="";
+    document.getElementById("T6to4Table").style.display="none";
+    document.getElementById("lanSetupTable").style.display="";
+    document.getElementById("dnsTable").style.display="none";
+  } else if(index==3) { // 6to4
+    document.getElementById("autoIpv6Table").style.display="none";
+    document.getElementById("staticIpv6Table").style.display="none";
+    document.getElementById("T6to4Table").style.display="";
+    document.getElementById("lanSetupTable").style.display="";
+    document.getElementById("dnsTable").style.display="none";
+    ipv6Lan=0;
+  }
+  $('input#IPv6DNSMode').prop("checked", dnsCheck);
+
+  if(ipv6Lan==1) {
+    $('input#ip6prefix').removeAttr('disabled');
+  } else {
+    $('input#ip6prefix').attr('disabled', 'disabled');
+  }
+}
+
+function setIpv6LANStat(index) {
+  if(index==0) { //Stateless Auto
+    $('#ip6DhcpStart').hide();
+    $('#ip6DhcpEnd').hide();
+  } else if(index==1) { //DHCPv6
+    $('#ip6DhcpStart').show();
+    $('#ip6DhcpEnd').show();
+  }
+}
+
+function checkAutoDns(check)
+{
+  if(check)
+    document.getElementById("dnsTable").style.display="none";
+  else
+    document.getElementById("dnsTable").style.display="";
+}
+
+function checkAutoRelayServer(check)
+{
+  if(check)
+    $('input#ipv4RelayServerIp').attr("disabled", true);
+  else
+    $('input#ipv4RelayServerIp').attr("disabled", false);
+}
+
+function checkEnableIpv6()
+{
+  if ($('#enableIpv6').val() == "ON") {
+    $('select#proto').removeAttr('disabled');
+  }
+  else {
+    $('select#proto').attr('disabled', 'disabled');
+  }
+  setIpv6WANStat();
+}
+
+$(document).ready(function() {
+  //console.log("document ready!!!");
+  isLoggedIn();
+
+  /* Empty category arrays */
+  emptyElementArrays();
+
+  $('#ipv6Menu').removeClass('menu');
+  $('#ipv6Menu').addClass('mainmenu');
+
+  switchOnOff(GuestNetEnable, "enableIpv6", checkEnableIpv6);
+
+  /* */
+  var optWANList = {"dhcpv6":"Auto/DHCPv6", "static":"Static IPv6", "6to4":"Tunnel 6to4"};
+  select(IPv6DisInternetConnectionType, "proto", optWANList, setIpv6WANStat);
+
+  switchOnOff(IPv6DisRouterAdvertisement, "AdvSendAdvert");
+
+  text(IPv6AutoDNSServer1, "autoDNS1");
+
+  text(IPv6AutoDNSServer2, "autoDNS2");
+
+  text(IPv6StaticAddr, "ip6addr");
+
+  text(IPv6StaticGateway, "ip6gw");
+
+  text(IPv6StaticDNSServer1, "staticDNS1");
+
+  text(IPv6StaticDNSServer2, "staticDNS2");
+
+  text(IPv6to4RelayServer, "ipv4RelayServerIp");
+  $('input#ipv4RelayServerIp').after("&nbsp;<input type=\"checkbox\" id=\"relayServer\" checked onclick=\"checkAutoRelayServer(this.checked);\"><span>" + IPv6to4Auto + "</span></input>");
+
+  text(IPv6to4DNSServer1, "T6to4DNS1");
+
+  text(IPv6to4DNSServer2, "T6to4DNS2");
+
+  var optLANList = {"disabled":"Stateless DHCPv6", "server":"Stateful DHCPv6"};
+  select(IPv6AutoAddrAssignMethod, "protolan", optLANList, setIpv6LANStat);
+
+  text(IPv6AutoAddrPrefix, "ip6prefix");
+  $('input#ip6prefix').after("/64");
+
+  text("DHCP Start IPv6", "ip6DhcpStart");
+
+  text("DHCP End IPv6", "ip6DhcpEnd");
+
+  /* Get the data and fill the DOM */
+  var ipv6WanInfo = getData("/f/getIpv6Info");
+  var protolan = 0;
+  var IPv6WANIP = "", IPv6Gateway = "", Ipv6Addr = "";
+  var staticWANIP = "";
+  var T6to4WANIP = "";
+  var relayServer = true;
+  var ip4LanAddr = "";
+  lanReboot = 0;
+  protolan_old = "", ip6DhcpStart_old = "", ip6DhcpEnd_old = "";
+  protoV4 = "", proto_old = "";
+
+  if (ipv6WanInfo != null) {
+    if(ipv6WanInfo.protolan == "server") {
+      protolan = 1;
+    }
+
+    dnsCheckDhcp = ipv6WanInfo.dnsCheckDhcp;
+    IPv6WANIP = ipv6WanInfo.IPv6WANIP;
+    IPv6Gateway = ipv6WanInfo.IPv6Gateway;
+    Ipv6Addr = ipv6WanInfo.Ipv6Addr;
+    staticWANIP = ipv6WanInfo.staticWANIP;
+    T6to4WANIP = ipv6WanInfo.T6to4WANIP;
+    ip4LanAddr = ipv6WanInfo.ip4LanAddr;
+    protolan_old = ipv6WanInfo.protolan;
+    ip6DhcpStart_old = ipv6WanInfo.ip6DhcpStart;
+    ip6DhcpEnd_old = ipv6WanInfo.ip6DhcpEnd;
+    proto_old = ipv6WanInfo.proto;
+    protoV4 = ipv6WanInfo.protoV4;
+    if(ipv6WanInfo.relayServer=="0") {
+      relayServer = false;
+    }
+
+    if(IPv6WANIP!="") {
+      document.getElementById("v6dhcp_status_disconnect").style.display="none";
+    } else {
+      document.getElementById("v6dhcp_status_connect").style.display="none";
+    }
+
+    if(staticWANIP!="") {
+      document.getElementById("v6static_status_disconnect").style.display="none";
+    } else {
+      document.getElementById("v6static_status_connect").style.display="none";
+    }
+
+    if(T6to4WANIP!="") {
+      document.getElementById("v66to4_status_disconnect").style.display="none";
+    } else {
+      document.getElementById("v66to4_status_connect").style.display="none";
+    }
+
+    /* Put the value into the DOM by key (id) */
+    $.each(ipv6WanInfo, function(key, value) {
+      console.log("key : " + key + " value : " + value);
+      doAssignValues(key, value);
+    });
+
+    if(ipv6WanInfo.proto == "none") {
+      $('#enableIpv6').val("OFF");
+      $('select#proto').val("dhcpv6");
+      checkEnableIpv6();
+    }
+    else {
+      $('#enableIpv6').val("ON");
+      $('span#enableIpv6').trigger("click");
+    }
+  }
+
+  // update UI component
+  setIpv6WANStat();
+  setIpv6LANStat(protolan);
+  document.getElementById("IPv6WANIP").innerHTML=IPv6WANIP;
+  document.getElementById("IPv6Gateway").innerHTML=IPv6Gateway;
+  document.getElementById("Ipv6Addr").innerHTML=Ipv6Addr;
+  document.getElementById("IPv66to4WANIP").innerHTML=T6to4WANIP;
+  $('input#relayServer').prop("checked", relayServer);
+  checkAutoRelayServer(document.getElementById("relayServer").checked);
+
+  /* Apply action */
+  $('[id=Apply]').click(function(event) {
+    //console.log("apply click...");
+    if (setData("/f/setIpv6Info")) {
+      if(lanReboot==1) {
+        doLanReboot(ip4LanAddr, "/adv_ipv6.html");
+      } else {
+        waitTimeout=30;
+        showWindow("waitWindow");
+        countdownWindow("waitingDig");
+      }
+    }
+  });
+  
+  /* Cancel action */
+  $("[id=Cancel]").click(function(event) {
+    //console.log("cancel click...");
+    refresh();
+  });
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" align="center" valign="top">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                <script type="text/javascript">writeLeftMenu();</script> 
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top"><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                <form id="ipv6form" name="ipv6form">
+                  <tr>
+                    <td colspan="2" align="left"><h4>IPv6</h4></td>
+                  </tr>
+                  <tr>
+                    <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                  </tr>
+                  <tr id="enableIpv6">
+                  </tr>
+                  <tr id="proto">
+                  </tr>
+                  <tr id="AdvSendAdvert">
+                  </tr>
+                  <tr>
+                    <td colspan="2">
+                      <table id="autoIpv6Table" width="100%" style="display:none">
+                        <tr><td>&nbsp;</td></tr>
+                        <tr><td>&nbsp;</td></tr>
+                        <tr>
+                          <td colspan="2" align="left"><h4 ><script>document.write(IPv6AutoWANSetup);</script></h4></td>
+                        </tr>
+                        <tr>
+                          <td align="left" class="style6" height="30">
+                            <span ><script>document.write(IPv6AutoStatus);</script></span>
+                          </td>
+                          <td align="left" class="style6">
+                            <span style="color:red" id="v6dhcp_status_disconnect"><script>document.write(DashDisconnected);</script></span>
+                            <span style="color:green" id="v6dhcp_status_connect"><script>document.write(DashConnected);</script></span>
+                            &nbsp;
+                            <span class="style8"><a href=""><script>document.write(GeneralRefreshStatus);</script></a></span>
+                          </td>
+                        </tr>  
+                        <tr>
+                          <td align="left" class="style6" height="30" width="35%">
+                            <span ><script>document.write(IPv6AutoAddr);</script></span>
+                          </td>
+                          <td align="left" class="style6" width="65%">
+                            <span id="IPv6WANIP"><!-- 1921.fff1.5.23 --></span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td align="left" class="style6" height="30" width="35%">
+                            <span ><script>document.write(IPv6AutoGateway);</script></span>
+                          </td>
+                          <td align="left" class="style6" width="65%">
+                            <span id="IPv6Gateway"><!-- 1921.fff1.5.23 --></span>
+                          </td>
+                        </tr>
+                        <tr><td>&nbsp;</td></tr>
+                        <tr><td>&nbsp;</td></tr>
+                        <tr>
+                          <td colspan="2" align="left"><h4>
+                            <input id="IPv6DNSMode" type="checkbox" style="WIDTH:17px; HEIGHT:17px"checked onclick="checkAutoDns(this.checked)"><script>document.write(IPv6AutoDNSAuto);</script></h4></td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2">
+                      <table id="dnsTable" style="display:none" width="100%">
+                        <tr id="autoDNS1">
+                        </tr>
+                        <tr id="autoDNS2">
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2">
+                      <table id="staticIpv6Table" width="100%" style="display:none">
+                        <tr><td>&nbsp;</td></tr>
+                        <tr><td>&nbsp;</td></tr>
+                        <tr>
+                          <td colspan="2" align="left"><h4 ><script>document.write(IPv6AutoWANSetup);</script></h4></td>
+                        </tr>
+                        <tr>
+                          <td align="left" class="style6" height="30">
+                            <span ><script>document.write(IPv6AutoStatus);</script></span>
+                          </td>
+                          <td align="left" class="style6">
+                            <span style="color:red" id="v6static_status_disconnect"><script>document.write(DashDisconnected);</script></span>
+                            <span style="color:green" id="v6static_status_connect"><script>document.write(DashConnected);</script></span>
+                            &nbsp;
+                            <span class="style8"><a href=""><script>document.write(GeneralRefreshStatus);</script></a></span>
+                          </td>
+                        </tr>  
+                        <tr id="ip6addr">
+                        </tr>
+                        <tr id="ip6gw">
+                        </tr>
+                        <tr id="staticDNS1">
+                        </tr>
+                        <tr id="staticDNS2">
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2">
+                      <table id="T6to4Table" width="100%" style="display:none">
+                        <tr><td>&nbsp;</td></tr>
+                        <tr><td>&nbsp;</td></tr>
+                        <tr>
+                          <td colspan="2" align="left"><h4 ><script>document.write(IPv6AutoWANSetup);</script></h4></td>
+                        </tr>
+                        <tr>
+                          <td align="left" class="style6" height="30">
+                            <span ><script>document.write(IPv6AutoStatus);</script></span>
+                          </td>
+                          <td align="left" class="style6">
+                            <span style="color:red" id="v66to4_status_disconnect"><script>document.write(DashDisconnected);</script></span>
+                            <span style="color:green" id="v66to4_status_connect"><script>document.write(DashConnected);</script></span>
+                            &nbsp;
+                            <span class="style8"><a href=""><script>document.write(GeneralRefreshStatus);</script></a></span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td align="left" class="style6" height="30" width="35%">
+                            <span ><script>document.write(IPv6AutoAddr);</script></span>
+                          </td>
+                          <td align="left" class="style6" width="65%">
+                            <span id="IPv66to4WANIP"><!-- 1921.fff1.5.23 --></span>
+                          </td>
+                        </tr>
+                        <tr id="ipv4RelayServerIp">
+                        </tr>
+                        <tr id="T6to4DNS1">
+                        </tr>
+                        <tr id="T6to4DNS2">
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2">
+                      <table id="lanSetupTable" width="100%" style="display:none">
+                        <tr><td>&nbsp;</td></tr>
+                        <tr><td>&nbsp;</td></tr>
+                        <tr>
+                          <td colspan="2" align="left"><h4><script>document.write(IPv6AutoLANSetup);</script></h4></td>
+                        </tr>
+                        <tr id="protolan">
+                        </tr>
+                        <tr id="ip6prefix">
+                        </tr>
+                        <tr>
+                          <td align="left" class="style6" height="30" width="35%">
+                            <span ><script>document.write(IPv6AutoLANAddr);</script></span>
+                          </td>
+                          <td align="left" class="style6" width="65%">
+                            <span id="Ipv6Addr"><!-- 1921.fff1.5.23 --></span>                     
+                          </td>
+                        </tr>
+                        <tr id="ip6DhcpStart">
+                        </tr>
+                        <tr id="ip6DhcpEnd">
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <script type="text/javascript">writeApplyCancel();</script>
+                </form>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+</div>
+<!-- End Save for Web Slices -->
+<script type="text/javascript">
+  writeWindow("cover");
+  writeWindow("waitWindow");
+</script>
+</body>
+</html>

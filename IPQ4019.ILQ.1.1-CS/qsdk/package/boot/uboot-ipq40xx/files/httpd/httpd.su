@@ -1,0 +1,5 @@
+httpd.c:75:13:httpd_download_progress	8	static
+httpd.c:108:12:httpd_findandstore_firstchunk	40	static
+httpd.c:92:13:httpd_state_reset	0	static
+httpd.c:86:6:httpd_init	8	static
+httpd.c:244:6:httpd_appcall	40	static

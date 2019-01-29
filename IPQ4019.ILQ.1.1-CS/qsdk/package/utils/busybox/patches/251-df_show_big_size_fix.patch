@@ -1,0 +1,70 @@
+--- a/coreutils/df.c
++++ b/coreutils/df.c
+@@ -61,6 +61,13 @@
+ #include "libbb.h"
+ #include "unicode.h"
+ 
++//20161220 Richard add: fix df can't show big size issue
++#define _GNU_SOURCE
++#include <unistd.h>
++#include <sys/syscall.h>
++#include <sys/types.h>
++
++
+ #if !ENABLE_FEATURE_HUMAN_READABLE
+ static unsigned long kscale(unsigned long b, unsigned long bs)
+ {
+@@ -68,6 +75,27 @@
+ }
+ #endif
+ 
++//20161220 Richard add: fix df can't show big size issue
++typedef struct
++  {
++    int __val[2];
++  } __fsid_t2;
++  
++struct kstatfs {
++	long f_type;
++	long f_bsize;
++	unsigned long long int f_blocks;
++	unsigned long long int f_bfree;
++	unsigned long long int f_bavail;
++	unsigned long long int f_files;
++	unsigned long long int f_ffree;
++	__fsid_t2 f_fsid;
++	long f_namelen;
++	long f_frsize;
++	long f_flags;
++	long f_spare[4];
++};
++
+ int df_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
+ int df_main(int argc UNUSED_PARAM, char **argv)
+ {
+@@ -78,8 +106,9 @@
+ 	unsigned opt;
+ 	FILE *mount_table;
+ 	struct mntent *mount_entry;
+-	struct statfs s;
+-
++	// struct statfs s;
++	//20161220 Richard add: fix df can't show big size issue
++	struct kstatfs s;
+ 	enum {
+ 		OPT_KILO  = (1 << 0),
+ 		OPT_POSIX = (1 << 1),
+@@ -171,7 +200,12 @@
+ 		device = mount_entry->mnt_fsname;
+ 		mount_point = mount_entry->mnt_dir;
+ 
+-		if (statfs(mount_point, &s) != 0) {
++		// if (statfs(mount_point, &s) != 0) {
++			// bb_simple_perror_msg(mount_point);
++			// goto set_error;
++		// }
++		//20161220 Richard add: fix df can't show big size issue
++		if (syscall(__NR_SYSCALL_BASE+266,mount_point,sizeof(s), &s) != 0) {
+ 			bb_simple_perror_msg(mount_point);
+ 			goto set_error;
+ 		}

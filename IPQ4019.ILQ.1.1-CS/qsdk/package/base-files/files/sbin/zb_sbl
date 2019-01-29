@@ -1,0 +1,47 @@
+#!/bin/sh
+# a script to download the CC2630 FW
+# the BL_BACKDOOR_CONFIG of ccfg shold be "c5 05 01 c5"
+# 0x1ffd8 : enable backdoor (0xc5)
+# 0x1ffd9 : pinNumber (0x06, DIO6)
+# 0x1ffda : Level (0x01, active high)
+# 0x1ffdb : enable bootloader (0xc5)
+
+if [ -f /sys/class/gpio/gpio18/direction ]; then
+  echo "GPIO18 as ZigBee Reset"
+else
+  echo "18" > /sys/class/gpio/export
+  echo "out" > /sys/class/gpio/gpio18/direction
+fi
+
+if [ -f /sys/class/gpio/gpio32/direction ]; then
+  echo "GPIO32 as ZigBee Reset (SR2)" 
+else
+  echo "32" > /sys/class/gpio/export
+  echo "out" > /sys/class/gpio/gpio32/direction
+fi
+
+if [ -f /sys/class/gpio/gpio49/direction ]; then
+  echo "GPIO49 as ZigBee SBL backdoor"
+else
+  echo "49" > /sys/class/gpio/export
+  echo "out" > /sys/class/gpio/gpio49/direction
+fi
+
+# reset CC2630
+echo "0" > /sys/class/gpio/gpio18/value
+echo "0" > /sys/class/gpio/gpio32/value
+
+# actvie backdoor
+echo "1" > /sys/class/gpio/gpio49/value
+sleep 1
+
+# reset done
+echo "1" > /sys/class/gpio/gpio18/value
+echo "1" > /sys/class/gpio/gpio32/value
+
+# deactive backdoor
+sleep 1
+echo "0" > /sys/class/gpio/gpio49/value
+
+sbl -f $1 -m $2 -c $3
+

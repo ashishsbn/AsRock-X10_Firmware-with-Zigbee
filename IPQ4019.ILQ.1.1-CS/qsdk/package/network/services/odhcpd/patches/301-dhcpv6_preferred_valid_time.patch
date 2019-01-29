@@ -1,0 +1,29 @@
+odhcpd: Modify lifetime of DHCPv6
+
+This patch modifies perferred and valid lifetime of DHCPv6 by using DHCPv4 leasetime.
+
+From: Bryce_Chen <Bryce1_Chen@pegatroncorp.com>
+
+--- a/src/dhcpv6-ia.c
++++ b/src/dhcpv6-ia.c
+@@ -706,11 +706,18 @@
+ 						addrs[i].preferred <= (uint32_t)now)
+ 					continue;
+ 
+-				if (prefix_pref != UINT32_MAX)
++				/*if (prefix_pref != UINT32_MAX)
+ 					prefix_pref -= now;
+ 
+ 				if (prefix_valid != UINT32_MAX)
+-					prefix_valid -= now;
++					prefix_valid -= now;*/
++
++				if (prefix_pref == UINT32_MAX)
++					prefix_pref = leasetime;
++
++				if (prefix_valid == UINT32_MAX)
++					prefix_valid = leasetime;
++				syslog(LOG_WARNING, "prefix_pref %d, prefix_valid %d", prefix_pref, prefix_valid);
+ 
+ 				if (a->length < 128) {
+ 					struct dhcpv6_ia_prefix p = {

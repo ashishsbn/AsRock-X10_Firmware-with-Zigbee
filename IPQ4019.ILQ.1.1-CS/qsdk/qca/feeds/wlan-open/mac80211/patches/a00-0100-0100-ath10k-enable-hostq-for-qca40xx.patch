@@ -1,0 +1,17 @@
+--- a/drivers/net/wireless/ath/ath10k/core.c
++++ b/drivers/net/wireless/ath/ath10k/core.c
+@@ -1706,6 +1706,14 @@ static int ath10k_core_init_firmware_fea
+ 			ar->qcache_active_peers = TARGET_QCA40XX_QCACHE_ACTIVE_PEERS;
+ 			ar->tx_chain_mask = TARGET_QCA40XX_TX_CHAIN_MASK;
+ 			ar->rx_chain_mask = TARGET_QCA40XX_RX_CHAIN_MASK;
++
++			/* FIXME: This is a temporary hack. Once all patches
++			 * involved (qca40xx and flow-ctrl) are upstreamed and
++			 * firmware images re-generated to include the new
++			 * peer-flow-ctrl feature flag this can go away.
++			 */
++			__set_bit(ATH10K_FW_FEATURE_PEER_FLOW_CONTROL,
++				  ar->fw_features);
+ 		}
+ 
+ 		/* Firmware supporting peer flow control requires deeper Tx

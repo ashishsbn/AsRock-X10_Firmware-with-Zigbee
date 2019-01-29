@@ -1,0 +1,180 @@
+--- a/drivers/net/wireless/ath/ath10k/core.h
++++ b/drivers/net/wireless/ath/ath10k/core.h
+@@ -300,6 +300,9 @@ struct ath10k_dfs_stats {
+ 
+ struct ath10k_peer {
+ 	struct list_head list;
++	struct ieee80211_vif *vif;
++	struct ieee80211_sta *sta;
++
+ 	int vdev_id;
+ 	u8 addr[ETH_ALEN];
+ 	DECLARE_BITMAP(peer_ids, ATH10K_MAX_NUM_PEER_IDS);
+@@ -811,6 +814,7 @@ struct ath10k {
+ 
+ 	struct list_head arvifs;
+ 	struct list_head peers;
++	struct ath10k_peer *peer_map[ATH10K_MAX_NUM_PEER_IDS];
+ 	wait_queue_head_t peer_mapping_wq;
+ 
+ 	/* protected by conf_mutex */
+--- a/drivers/net/wireless/ath/ath10k/mac.c
++++ b/drivers/net/wireless/ath/ath10k/mac.c
+@@ -619,10 +619,15 @@ ath10k_mac_get_any_chandef_iter(struct i
+ 	*def = &conf->def;
+ }
+ 
+-static int ath10k_peer_create(struct ath10k *ar, u32 vdev_id, const u8 *addr,
++static int ath10k_peer_create(struct ath10k *ar,
++			      struct ieee80211_vif *vif,
++			      struct ieee80211_sta *sta,
++			      u32 vdev_id,
++			      const u8 *addr,
+ 			      enum wmi_peer_type peer_type)
+ {
+ 	struct ath10k_vif *arvif;
++	struct ath10k_peer *peer;
+ 	int num_peers = 0;
+ 	int ret;
+ 
+@@ -651,6 +656,22 @@ static int ath10k_peer_create(struct ath
+ 		return ret;
+ 	}
+ 
++	spin_lock_bh(&ar->data_lock);
++
++	peer = ath10k_peer_find(ar, vdev_id, addr);
++	if (!peer) {
++		ath10k_warn(ar, "failed to find peer %pM on vdev %i after creation\n",
++			    addr, vdev_id);
++		ath10k_wmi_peer_delete(ar, vdev_id, addr);
++		spin_unlock_bh(&ar->data_lock);
++		return ret;
++	}
++
++	peer->vif = vif;
++	peer->sta = sta;
++
++	spin_unlock_bh(&ar->data_lock);
++
+ 	ar->num_peers++;
+ 
+ 	return 0;
+@@ -747,6 +768,7 @@ static void ath10k_peer_cleanup(struct a
+ 		kfree(peer);
+ 		ar->num_peers--;
+ 	}
++	memset(ar->peer_map, 0, sizeof(ar->peer_map));
+ 	spin_unlock_bh(&ar->data_lock);
+ }
+ 
+@@ -3529,7 +3551,8 @@ void ath10k_offchan_tx_work(struct work_
+ 				   peer_addr, vdev_id);
+ 
+ 		if (!peer) {
+-			ret = ath10k_peer_create(ar, vdev_id, peer_addr,
++			ret = ath10k_peer_create(ar, NULL, NULL, vdev_id,
++						 peer_addr,
+ 						 WMI_PEER_TYPE_DEFAULT);
+ 			if (ret)
+ 				ath10k_warn(ar, "failed to create peer %pM on vdev %d: %d\n",
+@@ -4631,8 +4654,8 @@ static int ath10k_add_interface(struct i
+ 
+ 	if (arvif->vdev_type == WMI_VDEV_TYPE_AP ||
+ 	    arvif->vdev_type == WMI_VDEV_TYPE_IBSS) {
+-		ret = ath10k_peer_create(ar, arvif->vdev_id, vif->addr,
+-					 WMI_PEER_TYPE_DEFAULT);
++		ret = ath10k_peer_create(ar, vif, NULL, arvif->vdev_id,
++					 vif->addr, WMI_PEER_TYPE_DEFAULT);
+ 		if (ret) {
+ 			ath10k_warn(ar, "failed to create vdev %i peer for AP/IBSS: %d\n",
+ 				    arvif->vdev_id, ret);
+@@ -4765,7 +4788,9 @@ static void ath10k_remove_interface(stru
+ {
+ 	struct ath10k *ar = hw->priv;
+ 	struct ath10k_vif *arvif = ath10k_vif_to_arvif(vif);
++	struct ath10k_peer *peer;
+ 	int ret;
++	int i;
+ 
+ 	cancel_work_sync(&arvif->ap_csa_work);
+ 	cancel_delayed_work_sync(&arvif->connection_loss_work);
+@@ -4819,6 +4844,20 @@ static void ath10k_remove_interface(stru
+ 		spin_unlock_bh(&ar->data_lock);
+ 	}
+ 
++	spin_lock_bh(&ar->data_lock);
++	for (i = 0; i < ARRAY_SIZE(ar->peer_map); i++) {
++		peer = ar->peer_map[i];
++		if (!peer)
++			continue;
++
++		if (peer->vif == vif) {
++			ath10k_warn(ar, "found vif peer %pM entry on vdev %i after it was supposedly removed\n",
++				    vif->addr, arvif->vdev_id);
++			peer->vif = NULL;
++		}
++	}
++	spin_unlock_bh(&ar->data_lock);
++
+ 	ath10k_peer_cleanup(ar, arvif->vdev_id);
+ 
+ 	if (vif->type == NL80211_IFTYPE_MONITOR) {
+@@ -5538,6 +5577,7 @@ static int ath10k_sta_state(struct ieee8
+ 	struct ath10k_sta *arsta = (struct ath10k_sta *)sta->drv_priv;
+ 	struct ath10k_peer *peer;
+ 	int ret = 0;
++	int i;
+ 
+ 	if (old_state == IEEE80211_STA_NOTEXIST &&
+ 	    new_state == IEEE80211_STA_NONE) {
+@@ -5578,8 +5618,8 @@ static int ath10k_sta_state(struct ieee8
+ 		if (sta->tdls)
+ 			peer_type = WMI_PEER_TYPE_TDLS;
+ 
+-		ret = ath10k_peer_create(ar, arvif->vdev_id, sta->addr,
+-					 peer_type);
++		ret = ath10k_peer_create(ar, vif, sta, arvif->vdev_id,
++					 sta->addr, peer_type);
+ 		if (ret) {
+ 			ath10k_warn(ar, "failed to add peer %pM for vdev %d when adding a new sta: %i\n",
+ 				    sta->addr, arvif->vdev_id, ret);
+@@ -5666,6 +5706,20 @@ static int ath10k_sta_state(struct ieee8
+ 
+ 		ath10k_mac_dec_num_stations(arvif, sta);
+ 
++		spin_lock_bh(&ar->data_lock);
++		for (i = 0; i < ARRAY_SIZE(ar->peer_map); i++) {
++			peer = ar->peer_map[i];
++			if (!peer)
++				continue;
++
++			if (peer->sta == sta) {
++				ath10k_warn(ar, "found sta peer %pM entry on vdev %i after it was supposedly removed\n",
++					    sta->addr, arvif->vdev_id);
++				peer->sta = NULL;
++			}
++		}
++		spin_unlock_bh(&ar->data_lock);
++
+ 		if (!sta->tdls)
+ 			goto exit;
+ 
+--- a/drivers/net/wireless/ath/ath10k/txrx.c
++++ b/drivers/net/wireless/ath/ath10k/txrx.c
+@@ -203,6 +203,7 @@ void ath10k_peer_map_event(struct ath10k
+ 	ath10k_dbg(ar, ATH10K_DBG_HTT, "htt peer map vdev %d peer %pM id %d\n",
+ 		   ev->vdev_id, ev->addr, ev->peer_id);
+ 
++	ar->peer_map[ev->peer_id] = peer;
+ 	set_bit(ev->peer_id, peer->peer_ids);
+ exit:
+ 	spin_unlock_bh(&ar->data_lock);
+@@ -225,6 +226,7 @@ void ath10k_peer_unmap_event(struct ath1
+ 	ath10k_dbg(ar, ATH10K_DBG_HTT, "htt peer unmap vdev %d peer %pM id %d\n",
+ 		   peer->vdev_id, peer->addr, ev->peer_id);
+ 
++	ar->peer_map[ev->peer_id] = NULL;
+ 	clear_bit(ev->peer_id, peer->peer_ids);
+ 
+ 	if (bitmap_empty(peer->peer_ids, ATH10K_MAX_NUM_PEER_IDS)) {

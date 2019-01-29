@@ -1,0 +1,108 @@
+#!/bin/sh
+# X10 specification
+
+. /usr/share/libubox/jshn.sh
+. /lib/config/uci.sh
+
+op_mode=$(uci_get system @system[0] op_mode 0)
+TMP_ASSOC_LIST_FILE=/tmp/dhcp_assoc_wlan_clients
+
+eth_power_cycle()
+{
+	for port in $(seq 2 5)
+	do
+		ssdk_sh port poweroff set $port
+	done
+	sleep 1
+	for port in $(seq 2 5)
+	do
+		ssdk_sh port poweron set $port
+	done
+}
+
+kick_wlan_clients()
+{
+	for ifname in ath0 ath1
+	do
+		wlanconfig $ifname list sta | sed '1d' | awk '{ print $1 }' > $TMP_ASSOC_LIST_FILE
+		for i in $(seq 1 300)
+		do
+			CLIENT_MAC=`sed "$i!d" "$TMP_ASSOC_LIST_FILE"`
+			if [ -n "$CLIENT_MAC" ]; then
+				iwpriv $ifname kickmac $CLIENT_MAC
+			else
+				break;
+			fi
+		done
+		rm $TMP_ASSOC_LIST_FILE
+	done
+}
+
+if [ "$op_mode" != "0" ] ; then
+	local lan_ip lan_subnet
+	json_load "$(ifstatus lan)"
+	json_select ipv4-address
+	json_select 1
+	json_get_var lan_ip address
+
+	if [ "$lan_ip" != "" ] ; then
+		if [ "$op_mode" == "1" -o "$op_mode" == "3" ] ; then
+			ifdown lan2
+			/etc/init.d/dnsmasq stop
+			eth_power_cycle
+			if [ "$op_mode" == "1" ] ; then
+				kick_wlan_clients
+			fi
+		fi
+
+		# For USB storage
+		/etc/init.d/minidlna restart
+
+		lan_subnet=`echo $lan_ip | cut -d. -f1-3`
+		uci_set transmission @transmission[0] rpc_whitelist "127.0.0.1,$lan_subnet.*"
+		uci_commit transmission
+		/etc/init.d/transmission restart
+	fi
+
+	exit
+fi
+
+local ip_eth0 ip_br0 ip_eth0_subnet ip_br0_subnet
+
+json_load "$(ifstatus wan)"
+
+json_select ipv4-address
+json_select 1
+json_get_var ip_eth0 address
+
+json_load "$(ifstatus lan)"
+
+json_select ipv4-address
+json_select 1
+json_get_var ip_br0 address
+
+echo "eth0: $ip_eth0"
+echo "br0: $ip_br0"
+
+ip_eth0_subnet=`echo $ip_eth0 | cut -d. -f1-3`
+ip_br0_subnet=`echo $ip_br0 | cut -d. -f1-3`
+
+if [ $ip_eth0_subnet == $ip_br0_subnet ]; then
+	local ip_hopping ip_prefix startaddr endaddr
+	startaddr=$(uci_get dhcp lan startaddr | cut -d. -f4)
+	endaddr=$(uci_get dhcp lan endaddr | cut -d. -f4)
+	if [ $ip_eth0_subnet == "192.168.1" ]; then
+		ip_prefix="192.168.3"
+	else
+		ip_prefix="192.168.1"
+	fi
+	ip_hopping="$ip_prefix.1"
+	echo "ip hopping: $ip_hopping"
+	uci_set network lan ipaddr $ip_hopping
+	uci_commit network
+	uci_set dhcp lan startaddr "$ip_prefix.$startaddr"
+	uci_set dhcp lan endaddr "$ip_prefix.$endaddr"
+	uci_commit dhcp
+
+	reboot &
+fi

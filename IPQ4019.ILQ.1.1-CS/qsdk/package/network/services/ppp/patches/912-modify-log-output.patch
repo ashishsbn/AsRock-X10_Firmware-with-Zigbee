@@ -1,0 +1,100 @@
+--- a/pppd/ipcp.c
++++ b/pppd/ipcp.c
+@@ -50,6 +50,7 @@
+ #include <string.h>
+ #include <stdlib.h>
+ #include <netdb.h>
++#include <unistd.h>
+ #include <sys/param.h>
+ #include <sys/types.h>
+ #include <sys/socket.h>
+@@ -1776,7 +1777,7 @@ ip_demand_conf(u)
+ 	if (sifproxyarp(u, wo->hisaddr))
+ 	    proxy_arp_set[u] = 1;
+ 
+-    notice("local  IP address %I", wo->ouraddr);
++    notice("%s : pid : %d : local  IP address %I",ifname,getpid(),wo->ouraddr);
+     if (wo->hisaddr)
+ 	notice("remote IP address %I", wo->hisaddr);
+ 
+@@ -1946,7 +1947,7 @@ ipcp_up(f)
+ 
+ 	ipcp_wantoptions[0].ouraddr = go->ouraddr;
+ 
+-	notice("local  IP address %I", go->ouraddr);
++	notice("%s : pid : %d :local  IP address %I", ifname,getpid(),go->ouraddr);
+ 	if (ho->hisaddr != 0)
+ 	    notice("remote IP address %I", ho->hisaddr);
+ 	if (go->dnsaddr[0])
+--- a/pppd/main.c
++++ b/pppd/main.c
+@@ -749,7 +749,7 @@ set_ifunit(iskey)
+ 	slprintf(ifname, sizeof(ifname), "%s%d", PPP_DRV_NAME, ifunit);
+     else
+ 	slprintf(ifname, sizeof(ifname), "%s", use_ifname);
+-    info("Using interface %s", ifname);
++    info("Using interface %s,pid : %d", ifname,getpid());
+     script_setenv("IFNAME", ifname, iskey);
+     if (iskey) {
+ 	create_pidfile(getpid());	/* write pid to file */
+@@ -1064,8 +1064,10 @@ get_input()
+     u_char *p;
+     u_short protocol;
+     struct protent *protp;
++    char dumpstr[32];
+ 
+     p = inpacket_buf;	/* point to beginning of packet buffer */
++    memset(dumpstr,0,32);
+ 
+     len = read_packet(inpacket_buf);
+     if (len < 0)
+@@ -1091,7 +1093,8 @@ get_input()
+ 	return;
+     }
+ 
+-    dump_packet("rcvd", p, len);
++    sprintf(dumpstr,"%s : pid : %d : rcvd",ifname,getpid());
++    dump_packet(dumpstr, p, len);
+     if (snoop_recv_hook) snoop_recv_hook(p, len);
+ 
+     p += 2;				/* Skip address and control */
+--- a/pppd/plugins/pppol2tp/pppol2tp.c
++++ b/pppd/plugins/pppol2tp/pppol2tp.c
+@@ -34,6 +34,7 @@
+ #include <net/if.h>
+ #include <sys/ioctl.h>
+ #include <sys/socket.h>
++#include <sys/types.h>
+ #include <netinet/in.h>
+ #include <signal.h>
+ #include <linux/version.h>
+@@ -238,7 +239,8 @@ static void send_config_pppol2tp(int mtu
+ 	if (pppol2tp_session_id > 0)
+ 		sprintf(&sid[0], "%hu ", pppol2tp_session_id);
+ 
+-	dbglog("PPPoL2TP options: %s%s%s%s%s%s%s%s%sdebugmask %d",
++	dbglog("%s : pid : %d : PPPoL2TP options: %s%s%s%s%s%s%s%s%sdebugmask %d",
++               ifname,getpid(),
+ 	       pppol2tp_recv_seq ? "recvseq " : "",
+ 	       pppol2tp_send_seq ? "sendseq " : "",
+ 	       pppol2tp_lns_mode ? "lnsmode " : "",
+--- a/pppd/sys-linux.c
++++ b/pppd/sys-linux.c
+@@ -469,7 +469,7 @@ int generic_establish_ppp (int fd)
+ 	    error("Couldn't get channel number: %m");
+ 	    goto err;
+ 	}
+-	dbglog("using channel %d", chindex);
++	dbglog("pid : %d :using channel %d", getpid(),chindex);
+ 	fd = open("/dev/ppp", O_RDWR);
+ 	if (fd < 0) {
+ 	    error("Couldn't reopen /dev/ppp: %m");
+@@ -1088,7 +1088,7 @@ void output (int unit, unsigned char *p,
+     int fd = ppp_fd;
+     int proto;
+ 
+-    dump_packet("sent", p, len);
++    //dump_packet("sent", p, len);
+     if (snoop_send_hook) snoop_send_hook(p, len);
+ 
+     if (len < PPP_HDRLEN)

@@ -1,0 +1,2 @@
+#!/bin/sh
+flock /var/irlock /sbin/test_ir $1 $2 $3 $4

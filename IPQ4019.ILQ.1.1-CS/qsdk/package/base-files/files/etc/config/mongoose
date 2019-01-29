@@ -1,0 +1,8 @@
+# Web server configuration
+config mongoose main
+        option document_root '/etc/html'
+        option listening_ports '4444'
+        option index_files 'index.html'
+        option authentication_domain 'ASRock X10 Router'
+        option global_auth_file '/etc/login'
+	option thread_num '5'

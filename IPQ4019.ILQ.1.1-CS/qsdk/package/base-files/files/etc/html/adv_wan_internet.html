@@ -1,0 +1,656 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+
+var mtuDhcp, mtuStatic, mtuPppoe, mtuPptp, mtuL2tp;
+var ipCheckPppoe, ipCheckPptp, ipCheckL2tp;
+var ipaddrStatic, netmaskStatic, gatewayStatic;
+var ipaddrPptp, netmaskPptp, gatewayPptp;
+var ipaddrL2tp, netmaskL2tp, gatewayL2tp;
+var dnsCheckDhcp, dnsCheckPppoe, dnsCheckPptp, dnsCheckL2tp;
+var primaryDhcp, primaryStatic, primaryPppoe, primaryPptp, primaryL2tp;
+var secondaryDhcp, secondaryStatic, secondaryPppoe, secondaryPptp, secondaryL2tp;
+var usernamePppoe, usernamePptp, usernameL2tp;
+var passwordPppoe, passwordPptp, passwordL2tp;
+var ipaddrLan;
+var lanReboot, macaddr_old, proto_old, mtu_old;
+var iptvInfo;
+
+function setData(url) {
+  var proto = $('select#proto').val();
+  var mtu = $('input#mtu').val();
+  var macaddr = $('input#macaddr').val();
+  var wanIpCheck = $('input#wanIpCheck').prop('checked');
+  var wanDnsCheck = $('input#wanDnsCheck').prop('checked');
+  var ipCheck = 1;
+  var dnsCheck = 1;
+  var networkRestart = 0;
+
+  argu = "&proto="+proto;
+  if(proto == "static") {
+    // do nothing
+  } else if(proto=="dhcp") {
+    // do nothing
+  } else {
+    var username = $('input#username').val();
+    if (username.length == 0) {
+      alert(WANWarn5);
+      return false;
+    }
+    var password = $('input#password').val();
+    if (password.length == 0) {
+      alert(WANWarn4);
+      return false;
+    }
+    argu += "&username="+encodeURIComponent(username)+"&password="+encodeURIComponent(password);
+    if(proto == "pptp") {
+      var serverPptp = $('input#serverPptp').val();
+      if(!checkIPAddr(serverPptp)){
+        alert(WANWarn3);
+        $('input#serverPptp').focus();
+        return false;
+      }
+      argu += "&serverPptp="+serverPptp;
+    } else if(proto == "l2tp") {
+      var serverL2tp = $('input#serverL2tp').val();
+      if(!checkIPAddr(serverL2tp)){
+        alert(WANWarn3);
+        $('input#serverL2tp').focus();
+        return false;
+      }
+      argu += "&serverL2tp="+serverL2tp;
+    }
+  } 
+
+  if(!wanIpCheck) {
+    ipCheck = 0;
+    var ipaddr = $('input#ipaddr').val();
+    var netmask = $('input#netmask').val();
+    var gateway = $('input#gateway').val();
+
+    if(!checkIPAddr(ipaddr)){
+      alert(InvalidIpAddress);
+      $('input#ipaddr').focus();
+      return false;
+    }
+    if(checkIPMask(netmask)==false) {
+      alert(InvalidSubnet);
+      $("input#netmask").focus();
+      return false;
+    }
+
+    if(checkSameSubnet(ipaddr, ipaddrLan, netmask)==true) {
+      console.log("same subnet!");
+      alert(PopInfo21);
+      $('input#ipaddr').focus();
+      return false;
+    }
+
+    if(!checkIPAddr(gateway)){
+      alert(WANWarn3);
+      $('input#gateway').focus();
+      return false;
+    }
+
+    argu += "&ipCheck="+ipCheck+"&ipaddr="+ipaddr+"&netmask="+netmask+"&gateway="+gateway;
+  } else {
+    argu += "&ipCheck="+ipCheck;
+  }
+  if(!wanDnsCheck) {
+    dnsCheck = 0;
+    var primary = $('input#primary').val();
+    var secondary = $('input#secondary').val();
+
+    if(proto=="static") {
+      if(primary.length!=0) {
+        if(!checkIPAddr(primary)){
+          alert(WANWarn2);
+          $('input#primary').focus();
+          return false;
+        }
+        argu += "&dnsCheck=0"+"&primary="+primary;
+      } else {
+        argu += "&dnsCheck=1";
+      }
+    } else {
+      if(!checkIPAddr(primary)){
+        alert(WANWarn2);
+        $('input#primary').focus();
+        return false;
+      }
+      argu += "&dnsCheck="+dnsCheck+"&primary="+primary;
+    }
+
+    if(secondary.length!=0) {
+      if(!checkIPAddr(secondary)){
+        alert(WANWarn2);
+        $('input#secondary').focus();
+        return false;
+      }
+      argu += "&secondary="+secondary;
+    }
+    
+  } else {
+    argu += "&dnsCheck="+dnsCheck;
+  }
+
+  if(isNaN(mtu) || mtu=="") {
+    alert(WANWarn1);
+    console.log(isNaN(mtu)+":"+mtu);
+    $('input#mtu').focus();
+    return false;
+  } else {
+    if((proto=="dhcp")||(proto=="static")) {
+      if(!checkRange(mtu,1,46,1500)) {
+        alert(WANWarn7);
+        return false;
+      }
+    } else if(proto=="pppoe") {
+      if(!checkRange(mtu,1,576,1492)) {
+        alert(WANWarn8);
+        return false;
+      }
+    } else if(proto=="pptp") {
+      if(!checkRange(mtu,1,1,1444)) {
+        alert(WANWarn9);
+        return false;
+      }
+    } else if(proto=="l2tp") {
+      if(!checkRange(mtu,1,6,1460)) {
+        alert(WANWarn10);
+        return false;
+      }
+    }
+    argu += "&mtu="+mtu;
+  }
+
+  if(macaddr!="") {
+    if(macaddr.length == 17) {
+      for (var i=0; i<macaddr.length; i++) {
+        if(i==2 || i==5 || i ==8 || i==11 || i==14) {
+          if(macaddr.charAt(i) != ":") {
+            alert(InvalidMAC);
+            return false;
+          }
+        } else {
+          if ( (macaddr.charAt(i) >= '0' && macaddr.charAt(i) <= '9') || (macaddr.charAt(i) >= 'a' && macaddr.charAt(i) <= 'f') || (macaddr.charAt(i) >= 'A' && macaddr.charAt(i) <= 'F') )
+          continue;
+          alert(InvalidMAC);
+          return false;
+        }      
+      }
+    } else {
+      alert(InvalidMAC);
+      return false;
+    }
+    argu += "&macaddr="+macaddr;
+  }
+
+  if((macaddr_old!=macaddr)||(mtu_old!=mtu)||(proto_old!=proto)) {
+    // change mtu, macaddr, or proto, need to restart network
+    networkRestart = 1;
+  }
+  argu += "&networkRestart="+networkRestart;
+
+  if( ((macaddr_old!=macaddr)&&(macaddr.length==0)) ) { //|| (proto_old!=proto) ) {
+    // clear MAC address, need to reboot
+    lanReboot = 1;
+    console.log("lanReboot " + lanReboot);
+  }
+  // If need to disable IPTV, then need to reboot
+  if (macaddr.length!=0 && parseInt(iptvInfo.PortSelect)!=0) {
+    lanReboot = 1;
+  }
+
+  console.log("argu " + argu);
+
+  $.ajax({
+    url: url,
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      //console.log(result);
+    },
+    error : function() {
+      //console.log("post " + url + " error");
+    }
+  });
+
+  return true;
+}
+
+function changePskStat(maskChecked)
+{
+  changePassStat("password", maskChecked);
+}
+
+function showWanDnsTable(check) {
+  if(check) {
+    $('#primary').show();
+    $('#secondary').show();
+  } else {
+    $('#primary').hide();
+    $('#secondary').hide();
+  }
+}
+
+function showWanIpTable(check) {
+  var wanType = $('select#proto').val();
+  if(check) {
+    $('#ipaddr').show();
+    $('#netmask').show();
+    $('#gateway').show();
+    if(wanType == "pptp" || wanType == "l2tp") {
+      $('input#wanDnsCheck').attr("disabled", true);
+      $('input#wanDnsCheck').attr("checked", false);
+      $('#primary').show();
+      $('#secondary').show();
+    }
+  } else {
+    $('#ipaddr').hide();
+    $('#netmask').hide();
+    $('#gateway').hide();
+    if(wanType == "pptp" || wanType == "l2tp") {
+      $('input#wanDnsCheck').attr("disabled", false);
+    }
+  }
+}
+
+function showWanAccountTable(check) {
+  if(check) {
+    $('#account').show();
+    $('#username').show();
+    $('#password').show();
+  } else {
+    $('#account').hide();
+    $('#username').hide();
+    $('#password').hide();
+  }
+}
+
+function setWanStat(index) {
+  var mtu, ipCheck, dnsCheck, primary, secondary;
+  var ipaddr, netmask, gateway;
+  var username, password;
+  if(index==0 || index==1) {
+    showWanAccountTable(false);
+    $('input#wanIpCheck').attr("disabled", true);
+    $('input#wanDnsCheck').attr("disabled", false);
+
+    if(index==1) { //static
+      $('input#wanDnsCheck').attr("disabled", true);
+      ipCheck = false;
+      dnsCheck = false;
+      mtu = mtuStatic;
+      primary = primaryStatic;
+      secondary = secondaryStatic;
+      ipaddr = ipaddrStatic;
+      netmask = netmaskStatic;
+      gateway = gatewayStatic;
+    } else { //dhcp
+      ipCheck = true;
+      if(dnsCheckDhcp=="0") {
+        dnsCheck = false;
+      } else {
+        dnsCheck = true;
+      }
+      mtu = mtuDhcp;
+      primary = primaryDhcp;
+      secondary = secondaryDhcp;
+    }
+    $('#serverL2tp').hide();
+    $('#serverPptp').hide();
+  } else if(index==2 || index==3 || index==4 || index==5) {
+    $('input#wanDnsCheck').attr("disabled", false);
+    if(index==2) { //pppoe
+      $('input#wanIpCheck').attr("disabled", true);
+      ipCheck = true;
+      if(dnsCheckPppoe=="0") {
+        dnsCheck = false;
+      } else {
+        dnsCheck = true;
+      }
+      mtu = mtuPppoe;
+      primary = primaryPppoe;
+      secondary = secondaryPppoe;
+      username = usernamePppoe;
+      password = passwordPppoe;
+    } else {
+      $('input#wanIpCheck').attr("disabled", false);
+      if(index==3) { //pptp
+        if(ipCheckPptp=="0") {
+          ipCheck = false;
+        } else {
+          ipCheck = true;
+        }
+        if(dnsCheckPptp=="0") {
+          dnsCheck = false;
+        } else {
+          dnsCheck = true;
+        }
+        mtu = mtuPptp;
+        primary = primaryPptp;
+        secondary = secondaryPptp;
+        ipaddr = ipaddrPptp;
+        netmask = netmaskPptp;
+        gateway = gatewayPptp;
+        username = usernamePptp;
+        password = passwordPptp;
+      } else if(index==4) { //l2tp
+        if(ipCheckL2tp=="0") {
+          ipCheck = false;
+        } else {
+          ipCheck = true;
+        }
+        if(dnsCheckL2tp=="0") {
+          dnsCheck = false;
+        } else {
+          dnsCheck = true;
+        }
+        mtu = mtuL2tp;
+        primary = primaryL2tp;
+        secondary = secondaryL2tp;
+        ipaddr = ipaddrL2tp;
+        netmask = netmaskL2tp;
+        gateway = gatewayL2tp;
+        username = usernameL2tp;
+        password = passwordL2tp;
+      }
+    }
+    showWanAccountTable(true);
+    if(index==4) { //l2tp
+      $('#serverL2tp').show();
+      $('#serverPptp').hide();
+    } else if(index==3) { //pptp
+      $('#serverL2tp').hide();
+      $('#serverPptp').show();
+    } else {
+      $('#serverL2tp').hide();
+      $('#serverPptp').hide();
+    }
+  }
+  showWanDnsTable(!dnsCheck);
+  showWanIpTable(!ipCheck);
+  $('input#wanIpCheck').prop("checked", ipCheck);
+  $('input#wanDnsCheck').prop("checked", dnsCheck);
+  $('input#mtu').val(mtu);
+  $('input#primary').val(primary);
+  $('input#secondary').val(secondary);
+  $('input#ipaddr').val(ipaddr);
+  $('input#netmask').val(netmask);
+  $('input#gateway').val(gateway);
+  $('input#username').val(username);
+  $('input#password').val(password);
+}
+
+function checkDnsTable(checkThis) {
+   showWanDnsTable(!checkThis);
+}
+
+function checkIpTable(checkThis) {
+   showWanIpTable(!checkThis);
+}
+
+function cloneMac() {
+   var cloneMac = getData("/f/getCloneMac");
+   if(cloneMac!= null) {
+    var Mac = cloneMac["macaddr"];
+    $('input#macaddr').val(Mac);
+   }
+}
+
+$(document).ready(function() {
+  //console.log("document ready!!!");
+  isLoggedIn();
+
+  /* Setup the Menu, expand the Wireless items */
+  $('#wanMenu').parent().removeClass('menu');
+  $('#wanMenu').parent().addClass('mainmenu');
+  $('#wanMenu').find('.submenu').addClass('show_menu');
+  $('.show_menu').show();
+  $('#wanInternet').removeClass('show_menu');
+  $('#wanInternet').removeClass('submenu');
+  $('#wanInternet').addClass('mainsubmenu');
+  $('#wanInternet').addClass('show_menu');
+
+  /* Empty category arrays */
+  emptyElementArrays();
+
+  /* */
+  var optList = {"dhcp":WANDynamic, "static":WANStatic, "pppoe":SelectTypePPPoE, "pptp":SelectTypePPTP, "l2tp":SelectTypeL2TP};
+  select(WANConnectionType, "proto", optList, setWanStat);
+
+  checkbox(WANWirelessWIP, "wanIpCheck", WANAutofromISP, checkIpTable);
+
+  text(WANIP, "ipaddr");
+  $('input#ipaddr').attr('maxlength', 32);
+
+  text(WANSubnetMask, "netmask");
+  $('input#netmask').attr('maxlength', 32);
+
+  text(WANGateway, "gateway");
+  $('input#gateway').attr('maxlength', 32);
+
+  checkbox(WANWDNS, "wanDnsCheck", WANAutofromISP, checkDnsTable);
+
+  text(WANPrimary, "primary");
+  $('input#primary').attr('maxlength', 32);
+
+  text(WANSecondary, "secondary");
+  $('input#secondary').attr('maxlength', 32);
+
+  label(WANAccount, "account");
+
+  text(WANUserName, "username");
+  $('input#username').attr('maxlength', 64);
+
+  text(WANPassword, "password", null, 1);
+  $('input#password').attr('maxlength', 64);
+  $('input#password').after("&nbsp;<input type=\"checkbox\" id=\"passwordMask\" checked onclick=\"changePskStat(this.checked);\"><span>" + WirelessMask + "</span></input>");
+
+  text(SelectTypePPTP + ' ' + WANGateway, "serverPptp");
+  $('input#serverPptp').attr('maxlength', 32);
+
+  text(SelectTypeL2TP + ' ' + WANGateway, "serverL2tp");
+  $('input#serverL2tp').attr('maxlength', 32);
+
+  text(WANMTU, "mtu");
+  $('input#mtu').attr('maxlength', 5);
+  
+  text(WANMACClone, "macaddr");
+  $('input#macaddr').attr('maxlength', 17);
+  $('input#macaddr').after("&nbsp<input type=\"button\" onclick=\"cloneMac()\" value=\" " + WANClone + " \">");
+
+  /* Get the data and fill the DOM */
+  var wanInfo = getData("/f/getWanInfo");
+  var proto = 0;
+  lanReboot = 0;
+  macaddr_old = "", proto_old = ""; mtu_old = 0;
+
+  if (wanInfo != null) { 
+
+    if(wanInfo.proto == "static") {
+      proto = 1;
+      mtu_old = wanInfo.mtuStatic;
+    } else if(wanInfo.proto == "pppoe") {
+      proto = 2;
+      mtu_old = wanInfo.mtuPppoe;
+    } else if(wanInfo.proto == "pptp") {
+      proto = 3;
+      mtu_old = wanInfo.mtuPptp;
+    } else if(wanInfo.proto == "l2tp") {
+      proto = 4;
+      mtu_old = wanInfo.mtuL2tp;
+    } else {
+      mtu_old = wanInfo.mtuDhcp;
+    }
+
+    mtuDhcp = wanInfo.mtuDhcp;
+    mtuStatic = wanInfo.mtuStatic;
+    mtuPppoe = wanInfo.mtuPppoe;
+    mtuPptp = wanInfo.mtuPptp;
+    mtuL2tp = wanInfo.mtuL2tp;
+    primaryDhcp = wanInfo.primaryDhcp;
+    primaryStatic = wanInfo.primaryStatic;
+    primaryPppoe = wanInfo.primaryPppoe;
+    primaryPptp = wanInfo.primaryPptp;
+    primaryL2tp = wanInfo.primaryL2tp;
+    secondaryDhcp = wanInfo.secondaryDhcp;
+    secondaryStatic = wanInfo.secondaryStatic;
+    secondaryPppoe = wanInfo.secondaryPppoe;
+    secondaryPptp = wanInfo.secondaryPptp;
+    secondaryL2tp = wanInfo.secondaryL2tp;
+    ipCheckPppoe = wanInfo.ipCheckPppoe;
+    ipCheckPptp = wanInfo.ipCheckPptp;
+    ipCheckL2tp = wanInfo.ipCheckL2tp;
+    dnsCheckDhcp = wanInfo.dnsCheckDhcp;
+    dnsCheckPppoe = wanInfo.dnsCheckPppoe;
+    dnsCheckPptp = wanInfo.dnsCheckPptp;
+    dnsCheckL2tp = wanInfo.dnsCheckL2tp;
+    ipaddrStatic = wanInfo.ipaddrStatic;
+    netmaskStatic = wanInfo.netmaskStatic;
+    gatewayStatic = wanInfo.gatewayStatic;
+    ipaddrPptp = wanInfo.ipaddrPptp;
+    netmaskPptp = wanInfo.netmaskPptp;
+    gatewayPptp = wanInfo.gatewayPptp;
+    ipaddrL2tp = wanInfo.ipaddrL2tp;
+    netmaskL2tp = wanInfo.netmaskL2tp;
+    gatewayL2tp = wanInfo.gatewayL2tp;
+    usernamePppoe = decodeURIComponent(wanInfo.usernamePppoe);
+    usernamePptp = decodeURIComponent(wanInfo.usernamePptp);
+    usernameL2tp = decodeURIComponent(wanInfo.usernameL2tp);
+    passwordPppoe = decodeURIComponent(wanInfo.passwordPppoe);
+    passwordPptp = decodeURIComponent(wanInfo.passwordPptp);
+    passwordL2tp = decodeURIComponent(wanInfo.passwordL2tp);
+    ipaddrLan = wanInfo.ipaddrLan;
+    macaddr_old = wanInfo.macaddr;
+    proto_old = wanInfo.proto;
+
+    /* Put the value into the DOM by key (id) */
+    $.each(wanInfo, function(key, value) {
+      console.log("key : " + key + " value : " + value);
+      doAssignValues(key, value);
+    });
+  
+  }
+
+  iptvInfo = getData("/f/getAdvlaniptv");
+
+  // update UI component
+  setWanStat(proto);
+
+  /* Apply action */
+  $('[id=Apply]').click(function(event) {
+    //console.log("apply click...");
+    if (setData("/f/setWanInfo")) {
+      if(lanReboot==1) {
+        doLanReboot(ipaddrLan, "/adv_wan_internet.html");
+      } else {
+        waitTimeout=25;
+        showWindow("waitWindow");
+        countdownWindow("waitingDig");
+      }
+    }
+  });
+  
+  /* Cancel action */
+  $("[id=Cancel]").click(function(event) {
+    //console.log("cancel click...");
+    refresh();
+  });
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" align="center" valign="top">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                <script type="text/javascript">writeLeftMenu();</script> 
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top"><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td colspan="2" align="left"><h4>WAN</h4></td>
+                </tr>
+                <tr>
+                   <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                </tr>
+		<tr id="proto">
+		</tr>
+    <tr id="wanIpCheck">
+    </tr>
+    <tr id="ipaddr">
+    </tr>
+    <tr id="netmask">
+    </tr>
+    <tr id="gateway">
+    </tr>
+    <tr id="wanDnsCheck">
+    </tr>
+    <tr id="primary">
+    </tr>
+    <tr id="secondary">
+    </tr>
+    <tr id="account">
+    </tr>
+    <tr id="username">
+    </tr>
+    <tr id="password">
+    </tr>
+    <tr id="serverPptp">
+    </tr>
+    <tr id="serverL2tp">
+    </tr>
+    <tr id="mtu">
+    </tr>
+    <tr id="macaddr">
+    </tr>
+                <script type="text/javascript">writeApplyCancel();</script>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+</div>
+<!-- End Save for Web Slices -->
+<script type="text/javascript">
+  writeWindow("cover");
+  writeWindow("waitWindow");
+</script>
+</body>
+</html>

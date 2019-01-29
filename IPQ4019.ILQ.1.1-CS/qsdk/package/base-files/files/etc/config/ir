@@ -1,0 +1,55 @@
+
+config ir
+	option enable '1'
+	option userid ' '
+
+config keycode
+	option enable '0'
+	option name ' '
+	option value ' '
+
+config keycode
+	option enable '0'
+	option name ' '
+	option value ' '
+
+config keycode
+	option enable '0'
+	option name ' '
+	option value ' '
+
+config keycode
+	option enable '0'
+	option name ' '
+	option value ' '
+
+config keycode
+	option enable '0'
+	option name ' '
+	option value ' '
+
+config keycode
+	option enable '0'
+	option name ' '
+	option value ' '
+
+config keycode
+	option enable '0'
+	option name ' '
+	option value ' '
+
+config keycode
+	option enable '0'
+	option name ' '
+	option value ' '
+
+config keycode
+	option enable '0'
+	option name ' '
+	option value ' '
+
+config keycode
+	option enable '0'
+	option name ' '
+	option value ' '
+

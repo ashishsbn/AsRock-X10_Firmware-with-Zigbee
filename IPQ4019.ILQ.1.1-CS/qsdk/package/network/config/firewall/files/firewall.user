@@ -1,0 +1,48 @@
+# This file is interpreted as shell script.
+# Put your custom iptables rules here, they will
+# be executed with each firewall (re-)start.
+
+# Internal uci firewall chains are flushed and recreated on reload, so
+# put custom rules into the root chains e.g. INPUT or FORWARD or into the
+# special user chains, e.g. input_wan_rule or postrouting_lan_rule.
+#!/bin/sh
+
+. /lib/config/uci.sh
+
+local openvpn_enable=$(uci_get openvpn sample_server enabled)
+
+echo " openvpn_enable:$openvpn_enable"
+
+if [ $openvpn_enable == "1" ]; then
+	iptables -t nat -A prerouting_wan -p udp --dport 1194 -j ACCEPT
+	iptables -A input_wan -p udp --dport 1194 -j ACCEPT
+
+	iptables -I INPUT -i tun+ -j ACCEPT
+	iptables -I FORWARD -i tun+ -j ACCEPT
+	iptables -I OUTPUT -o tun+ -j ACCEPT
+	iptables -I FORWARD -o tun+ -j ACCEPT
+fi
+
+# IPSec firewall settings
+local ipsec_open=$(uci_get ipsec.strongswan.enabled)
+echo " ipsec_open:$ipsec_open"
+if [ $ipsec_open == "1" ]; then
+	# For L2TP
+	iptables -I INPUT 1 -p udp -m policy --dir in --pol ipsec -m udp --dport 1701 -j ACCEPT
+	iptables -A forwarding_rule -s 10.1.20.0/24 -j ACCEPT
+	# For IPSec
+	#iptables -I INPUT  -m policy --dir in --pol ipsec --proto esp -j ACCEPT
+	#iptables -I FORWARD -m policy --dir in --pol ipsec --proto esp -j ACCEPT
+	#iptables -I FORWARD -m policy --dir out --pol ipsec --proto esp -j ACCEPT
+	#iptables -I OUTPUT -m policy --dir out --pol ipsec --proto esp -j ACCEPT
+fi
+
+# PPTP WAN settings
+local pptp_wan=$(uci_get network.vpn.proto)
+echo " pptp_wan:$pptp_wan"
+if [ ! -z $pptp_wan ]; then
+	if [ $pptp_wan == "pptp" ]; then
+		iptables -t nat -A zone_wan_prerouting -p gre -j ACCEPT
+		iptables -A zone_wan_input -p gre -j ACCEPT
+	fi
+fi

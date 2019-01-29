@@ -1,0 +1,31 @@
+#!/bin/sh /etc/rc.common
+# (C) 2013 openwrt.org
+
+START=40
+
+start() {                            
+	echo "this file has been obseleted. please call \"/sbin/block mount\" directly"
+	#/sbin/block mount
+	for n in 1 2 3 4
+	do
+		mountpoint=`mount | grep sda$n`
+		num=`expr $n - 1`
+		if [ -z $mountpoint ]; then
+			uci set fstab.@mount[$num].enabled='0'
+		fi
+	done
+	for n in 1 2 3 4
+	do
+		mountpoint=`mount | grep sdb$n`
+		num=`expr $n + 3`
+		if [ -z $mountpoint ]; then
+			uci set fstab.@mount[$num].enabled='0'
+		fi
+	done
+	uci commit fstab
+}
+
+stop() {                            
+	echo "this file has been obseleted. please call \"/sbin/block umount\" directly"
+	/sbin/block umount
+}

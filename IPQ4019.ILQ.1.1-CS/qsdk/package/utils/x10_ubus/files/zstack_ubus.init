@@ -1,0 +1,28 @@
+#!/bin/sh /etc/rc.common
+
+
+START=90
+
+USE_PROCD=1
+
+MAC=`ifconfig eth0 | grep HWaddr | awk '{print $5}'`
+ntpdate -s pool.ntp.org
+
+start_service() {
+  	echo "Starting zstack ubus client"
+        procd_open_instance zstack_ubus
+        procd_set_param command /usr/bin/zstack_ubus $MAC
+        procd_set_param respawn ${respawn_threshold:-3600} ${respawn_timeout:-5} ${respawn_retry:-5}
+        procd_close_instance
+}
+
+stop_service(){
+  echo "Zstack ubus stopped."
+}
+
+reload_service() {
+  echo "Restarting zstack ubus"
+  stop
+  start
+}
+

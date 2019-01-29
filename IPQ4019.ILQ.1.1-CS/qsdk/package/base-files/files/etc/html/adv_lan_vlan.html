@@ -1,0 +1,470 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/jquery-ui.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+function updated_configuration() {
+  $.ajax ({
+    url: '/f/setVlanConfig',
+    type: 'POST',
+	data: '',
+    async:false,
+    dataType: 'json',
+    success:function(data) {
+    }
+  });
+}
+function postForm(FormID, reIndex) {
+  $.ajax ({
+    url: '/f/setVlanSetting',
+    type: 'POST',
+    async:false,
+    data: $(FormID).serialize(),
+    dataType: 'json',
+    success:function(data) {
+	if(data.status==0) {
+        if(reIndex==0 ){
+          document.urlValue.submit();
+        }else
+          return true;
+      }
+    }
+  });
+}
+function gotoReboot()
+{    
+  if(document.getElementById("vlanswitch").children[0].id=="imageOn")
+    $("[name='VLAN_Enable']").val("ON");
+  else
+    $("[name='VLAN_Enable']").val("OFF");
+  
+  ArrayURLB = "[";
+  for(i=2; i < ($("[name='VLANList']")[0].rows.length ); i++)
+  {
+    var enable_tmp,port_temp;
+    if($("[name='VLANList']")[0].rows[i].cells[0].children[0].checked)
+      enable_tmp="ON"
+    else
+      enable_tmp="OFF"
+    port_temp=""
+    for(j=0;j<4;j++)
+    {
+      if($("[name='VLANList']")[0].rows[i].cells[3].children[j].checked)
+        port_temp = port_temp + "1"
+      else
+        port_temp = port_temp + "0"
+    }
+    if( i==($("[name='VLANList']")[0].rows.length -1) ){
+      ArrayURLB += "[\"" + enable_tmp + "\",\"" +
+                           $("[name='VLANList']")[0].rows[i].cells[1].innerHTML + "\",\"" +
+                           $("[name='VLANList']")[0].rows[i].cells[2].innerHTML + "\",\"" +
+                           port_temp  + "\"]";     
+    }
+    else{
+      ArrayURLB += "[\"" + enable_tmp + "\",\"" +
+                           $("[name='VLANList']")[0].rows[i].cells[1].innerHTML + "\",\"" +
+                           $("[name='VLANList']")[0].rows[i].cells[2].innerHTML + "\",\"" +
+                           port_temp  + "\"],";      
+    }
+  }
+  ArrayURLB += "]" ;
+  $("[name='VLAN_Table']").val(ArrayURLB);          
+  postForm("#vlanF",1);
+  updated_configuration();
+  doReboot(); 
+}
+function addList()
+{
+  var nameCal=document.getElementById("name").value;
+  if(document.getElementById("vlanswitch").children[0].id=="imageOff")
+    return false;  
+  if(nameCal.length < 1)
+  {
+    alert(VLANWarn1);
+    $("#name").focus();
+    return false;
+  }
+   if(nameCal.length > 18)
+  {
+    alert(VLANWarn3);
+    $("#name").focus();
+    return false;
+  } 
+  if(isNaN(document.getElementById("vid").value) || $("#vid").val() < 1 )
+  {
+    alert(VLANWarn2);
+    $("#vid").focus();
+    return false;
+  }  
+  if(document.getElementById("vid").value < 1 || document.getElementById("vid").value > 4095)
+  {
+    alert(VLANWarn4);
+    $("#vid").focus();
+    return false;
+  }  
+  var tablelen=$("[name='VLANList']")[0].rows.length;
+  var i;
+  for(i=2;i<tablelen;i++)
+  {
+    tmptable=$("[name='VLANList']")[0].rows[i].cells[1].innerHTML;    
+  }
+
+  idtmp=$("[name='VLANList']")[0].rows.length;
+  row = $("[name='VLANList']")[0].insertRow( $("[name='VLANList']")[0].rows.length );
+
+  var p1c,p2c,p3c,p4c,enablenow;
+   if(document.getElementById("enablenow").checked)
+    enablenow="checked"
+  else
+    enablenow=""
+  if(document.getElementById("port1").checked)
+    p1c="checked"
+  else
+    p1c=""
+  if(document.getElementById("port1").checked)
+    p1c="checked"
+  else
+    p1c=""
+  if(document.getElementById("port2").checked)
+    p2c="checked"
+  else
+    p2c=""
+  if(document.getElementById("port3").checked)
+    p3c="checked"
+  else
+    p3c=""
+  if(document.getElementById("port4").checked)
+    p4c="checked"
+  else
+    p4c=""
+
+  row.insertCell(0).innerHTML= "<input type='checkbox'"+enablenow+"/>"
+  row.insertCell(1).innerHTML= document.getElementById("name").value;
+  row.insertCell(2).innerHTML= document.getElementById("vid").value;
+  row.insertCell(3).innerHTML= "<input type='checkbox'"+p1c+"/>LAN1&nbsp;\
+                                <input type='checkbox'"+p2c+"/>LAN2&nbsp;\
+                                <input type='checkbox'"+p3c+"/>LAN3&nbsp;\
+                                <input type='checkbox'"+p4c+"/>LAN4&nbsp;"
+  row.insertCell(4).innerHTML= "<a id=" + idtmp +
+    " onclick=\"delStaticList(this.id)\" href=\"#\" name=\"input\"><div align=\"center\"><img border=\"0\" width=\"18\" height=\"18\"src=\"./images/icon-.png\"></div><a>";
+  row.cells[0].setAttribute("class","style5");
+  row.cells[1].setAttribute("class","style5");
+  row.cells[2].setAttribute("class","style5");
+  row.cells[3].setAttribute("class","style5");
+  row.cells[4].setAttribute("class","style5");
+  row.cells[0].setAttribute("style","word-break:break-all;text-align:center;");
+  // row.cells[0].setAttribute("style","text-align:center;");
+  row.cells[1].setAttribute("style","word-break:break-all;text-align:center;");
+  row.cells[2].setAttribute("style","word-break:break-all;text-align:center;");
+  row.cells[3].setAttribute("style","text-align:center;");
+  row.cells[4].setAttribute("style","text-align:center;");
+  if(idtmp%2==1){
+    row.cells[0].setAttribute("bgcolor","#333333");
+    row.cells[1].setAttribute("bgcolor","#333333");
+    row.cells[2].setAttribute("bgcolor","#333333");
+    row.cells[3].setAttribute("bgcolor","#333333");    
+    row.cells[4].setAttribute("bgcolor","#333333");    
+  }
+
+  document.getElementById("vid").value="";
+  document.getElementById("name").value="";
+  document.getElementById("enablenow").checked=false;
+  document.getElementById("port1").checked=false;
+  document.getElementById("port2").checked=false;
+  document.getElementById("port3").checked=false;
+  document.getElementById("port4").checked=false;
+}
+function delStaticList(id)
+{
+  if ( !confirm(LANWarn7) ) {
+  return false;
+  }
+  else{
+    $("[name='VLANList']")[0].deleteRow(id);
+    // var indexI=0;
+    //   while( indexI < $("[name='input']").length ){
+    //     $("[name='input']")[indexI].id=indexI+2;
+    //     indexI++;
+    //   }
+    //   return true
+    if(document.getElementById("vlanswitch").children[0].id=="imageOn")
+      $("[name='VLAN_Enable']").val("ON");
+    else
+      $("[name='VLAN_Enable']").val("OFF");
+    
+    ArrayURLB = "[";
+    for(i=2; i < ($("[name='VLANList']")[0].rows.length ); i++)
+    {
+      var enable_tmp,port_temp;
+      if($("[name='VLANList']")[0].rows[i].cells[0].children[0].checked)
+        enable_tmp="ON"
+      else
+        enable_tmp="OFF"
+      port_temp=""
+      for(j=0;j<4;j++)
+      {
+        if($("[name='VLANList']")[0].rows[i].cells[3].children[j].checked)
+          port_temp = port_temp + "1"
+        else
+          port_temp = port_temp + "0"
+      }
+      if( i==($("[name='VLANList']")[0].rows.length -1) ){
+        ArrayURLB += "[\"" + enable_tmp + "\",\"" +
+                             $("[name='VLANList']")[0].rows[i].cells[1].innerHTML + "\",\"" +
+                             $("[name='VLANList']")[0].rows[i].cells[2].innerHTML + "\",\"" +
+                             port_temp  + "\"]";     
+      }
+      else{
+        ArrayURLB += "[\"" + enable_tmp + "\",\"" +
+                             $("[name='VLANList']")[0].rows[i].cells[1].innerHTML + "\",\"" +
+                             $("[name='VLANList']")[0].rows[i].cells[2].innerHTML + "\",\"" +
+                             port_temp  + "\"],";      
+      }
+    }
+    ArrayURLB += "]" ;
+    $("[name='VLAN_Table']").val(ArrayURLB);          
+    postForm("#vlanF",1);
+    window.location.reload(true);
+  }
+}
+function fillTable(table)
+{
+  while($("[name='VLANList']")[0].rows.length>2)
+    $("[name='VLANList']")[0].deleteRow(2);
+  for(k=0; k < table.length; k++)
+  { 
+    idnow=k+2;
+    row = $("[name='VLANList']")[0].insertRow( $("[name='VLANList']")[0].rows.length )
+    // row.setAttribute("style","font-size:11px; padding:5px;");
+    var enable_tmp,port_temp;
+    var port_tmp_array=new Array("","","","");
+    port_temp = table[k][3];
+    if(table[k][0]=="ON")
+      enable_tmp = "checked"
+    else
+      enable_tmp = ""
+    for(j=0;j<4;j++)
+    {
+      if(port_temp[j]==1)
+        port_tmp_array[j]="checked"
+      else
+        port_tmp_array[j]=""
+    }
+    row.insertCell(0).innerHTML= "<input type='checkbox'"+enable_tmp+"/>";
+    row.insertCell(1).innerHTML= table[k][1];
+    row.insertCell(2).innerHTML= table[k][2];
+    row.insertCell(3).innerHTML= "<input type='checkbox'"+port_tmp_array[0]+"/>LAN1&nbsp;\
+                                  <input type='checkbox'"+port_tmp_array[1]+"/>LAN2&nbsp;\
+                                  <input type='checkbox'"+port_tmp_array[2]+"/>LAN3&nbsp;\
+                                  <input type='checkbox'"+port_tmp_array[3]+"/>LAN4&nbsp;"
+    row.insertCell(4).innerHTML= "<a id=" + idnow +
+    " onclick=\"delStaticList(this.id)\" href=\"#\" name=\"input\"><div align=\"center\"><img border=\"0\" width=\"18\" height=\"18\"src=\"./images/icon-.png\"></div><a>";
+    
+    row.cells[0].setAttribute("class","style5");
+    row.cells[1].setAttribute("class","style5");
+    row.cells[2].setAttribute("class","style5");
+    row.cells[3].setAttribute("class","style5");
+    row.cells[4].setAttribute("class","style5");
+    row.cells[0].setAttribute("style","text-align:center;");
+    row.cells[1].setAttribute("style","word-break:break-all;text-align:center;");
+    row.cells[2].setAttribute("style","word-break:break-all;text-align:center;");
+    row.cells[3].setAttribute("style","text-align:center;");
+    row.cells[4].setAttribute("style","text-align:center;");
+    if(idnow%2==1){
+      row.cells[0].setAttribute("bgcolor","#333333");
+      row.cells[1].setAttribute("bgcolor","#333333");
+      row.cells[2].setAttribute("bgcolor","#333333");
+      row.cells[3].setAttribute("bgcolor","#333333");
+      row.cells[4].setAttribute("bgcolor","#333333");
+    }  
+  }
+}
+var vlanTbl;
+function getVlanData()
+{
+	var VlanInfo = getData("/f/getVlanSetting");
+    if (VlanInfo != null)
+	{
+		if(VlanInfo.Vlanenable=="ON")
+          changeOnOffStat(findElementByID("vlanswitch"));
+		checkStat();
+		vlanTbl=JSON.parse(VlanInfo.VlanTable);
+        fillTable(vlanTbl);
+    }else{
+	    console.log("get Vlan info fail!");
+	}
+}
+function checkStat()
+{
+  if(document.getElementById("vlanswitch").children[0].id=="imageOff")
+  {
+    document.getElementById("name").disabled=true
+    document.getElementById("enablenow").disabled=true
+    document.getElementById("vid").disabled=true
+    document.getElementById("port1").disabled=true
+    document.getElementById("port2").disabled=true
+    document.getElementById("port3").disabled=true
+    document.getElementById("port4").disabled=true
+  }
+  else
+  {
+    document.getElementById("name").disabled=false
+    document.getElementById("enablenow").disabled=false
+    document.getElementById("vid").disabled=false
+    document.getElementById("port1").disabled=false
+    document.getElementById("port2").disabled=false
+    document.getElementById("port3").disabled=false
+    document.getElementById("port4").disabled=false
+  }
+}
+$(document).ready(function(){
+  isLoggedIn();
+
+  console.log("document ready!!!");
+  
+  /* Setup the Menu, expand the LAN items */
+  $('#lanMenu').parent().removeClass('menu');
+  $('#lanMenu').parent().addClass('mainmenu');
+  $('#lanMenu').find('.submenu').addClass('show_menu');
+  $('.show_menu').show();
+  $('#lanVlan').removeClass('show_menu');
+  $('#lanVlan').removeClass('submenu');
+  $('#lanVlan').addClass('mainsubmenu');
+  $('#lanVlan').addClass('show_menu');
+
+  getVlanData();
+  
+    /* Apply action */
+  $('[id=Apply]').click(function(event) {
+    console.log("apply click...");
+	if(gotoReboot())
+		doReboot();
+  });
+  
+  /* Cancel action */
+  $("[id=Cancel]").click(function(event) {
+    console.log("cancel click...");
+    refresh();
+  });  
+
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+<form id="vlanF" name="vlanF" novalidate="novalidate">
+  <input type="hidden" name="VLAN_Enable"> 
+  <input type="hidden" name="VLAN_Table" value=""> 
+</form>  
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" align="center" valign="top">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                <script type="text/javascript">writeLeftMenu();</script> 
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top">
+				<table width="98%" border="0" cellspacing="2" cellpadding="2">
+                    <tbody><tr>
+                      <td colspan="2" align="left"><h4><script>document.write(VLAN);</script></h4></td>
+                    </tr>
+                    <tr>
+                      <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                    </tr>
+                    <tr>
+                      <td align="left" class="style6" width="25%">
+                        <span>
+                          <script>
+                          if(typeof( VLANEnable ) == 'undefined')
+                            document.write("VLAN Enable");
+                          else
+                            document.write(VLANEnable);
+                          </script>
+                        </span>
+                      </td>
+                      <td align="left" width="70%">
+                        <span id="vlanswitch" onclick="changeOnOffStat(this);checkStat();">
+                          <img id="imageOff" src="./images/botton03-off.png">
+                        </span>
+                      </td>
+                    </tr>                      
+                    <tr>
+                      <td colspan="2"><table width="100%" border="0" cellpadding="3" cellspacing="1" class="pixeltable" name="VLANList">
+                        <tbody><tr>
+                          <td align="center" bgcolor="#666666" width="10%"><h5><script>document.write(GuestNetEnable);</script></h5></td>
+                          <td align="center" bgcolor="#666666" width="15%"><h5><script>document.write(VLANName);</script></h5></td>
+                          <td align="center" bgcolor="#666666" width="15%"><h5><script>document.write(VVID);</script></h5></td>
+                          <td align="center" bgcolor="#666666" width="52%"><h5><script>document.write(VTAG);</script></h5></td>
+                          <td align="center" bgcolor="#666666" width="8%"><h5><script>document.write(WANAddDelete);</script></h5></td>
+                        </tr>                        
+                        <tr>
+                          <td align="center" bgcolor="#333333" class="style5"><input type="checkbox" id="enablenow" disabled=""></td>
+                          <td align="center" bgcolor="#333333" class="style5"><input name="name" type="email" id="name" size="7" disabled="" maxlength="18"></td>
+                          <td align="center" bgcolor="#333333" class="style5"><input name="vid" type="email" id="vid" size="7" disabled=""></td>
+                          <td align="center" bgcolor="#333333" class="style5">
+                            <input type="checkbox" id="port1" disabled="">LAN1&nbsp;                            
+                            <input type="checkbox" id="port2" disabled="">LAN2&nbsp;                            
+                            <input type="checkbox" id="port3" disabled="">LAN3&nbsp;                            
+                            <input type="checkbox" id="port4" disabled="">LAN4&nbsp;                            
+                          </td>                           
+                          <td align="center" bgcolor="#333333">
+                            <img id="addone" src="./images/icon+.png" width="18" height="18" onclick="addList()" style="cursor: pointer;">
+                          </td>
+                        </tr>
+                       </tbody></table>
+						</td>
+                    </tr>
+									<script type="text/javascript">writeApplyCancel();</script>
+								  </table>
+								</td>                  
+							  </tr>
+							</table>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><img  width="960"  height="8"  src="images/UI-new_11.png" /></td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <script type="text/javascript">writeFooter();</script>
+    </div>
+    <!-- End Save for Web Slices -->
+    <script type="text/javascript">
+      writeWindow("cover");
+      writeWindow("waitWindow");
+    </script>
+  </body>
+</html>

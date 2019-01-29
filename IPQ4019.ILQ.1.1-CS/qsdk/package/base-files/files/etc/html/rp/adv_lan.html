@@ -1,0 +1,242 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/ip_calc.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/asrock-rp.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+function setData(url)
+{
+  var argu, connType, lanIp, mask, gw, dnsType, dns1, dns2;
+  
+  connType = parseValueOfOnOff($('#connType').val());
+  argu = "connType=" + connType;
+  if (connType == "0") {
+    lanIp = $('input#lanIp').val();
+    if (checkIPAddr(lanIp) == false || isLocalhost(lanIp)) {
+      alert(LANWarn1);
+      $('input#lanIp').focus();
+      return false;
+    }
+
+    mask = $('input#mask').val();
+    if (checkIPMask(mask) == false) {
+      $("input#netmask").focus();
+      return false;
+    }
+
+    gw = $('input#gw').val();
+    if (checkIPAddr(gw) == false) {
+      alert(WANWarn3);
+      $('input#gw').focus();
+      return false;
+    }
+
+    argu += "&lanIp=" + lanIp + "&mask=" + mask + "&gw=" + gw;
+  }
+  
+  dnsType = parseValueOfOnOff($('#dnsType').val());
+  argu += "&dnsType=" + dnsType;
+  if (dnsType == "0") {
+    dns1 = $('input#dns1').val();
+    dns2 = $('input#dns2').val();
+    if (checkIPAddr(dns1) == false) {
+      alert(WANWarn2);
+      $('input#dns1').focus();
+      return false;
+    }
+    argu += "&dns1=" + dns1;
+
+    if (dns2 != "") {
+      if (checkIPAddr(dns2) == false){
+        alert(WANWarn2);
+        $('input#dns2').focus();
+        return false;
+      }
+      argu += "&dns2=" + dns2;
+    }
+  }
+
+  console.log(argu);
+  $.ajax({
+    url: url,
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log(result);
+    },
+    error : function() {
+      console.log("post " + url + " error");
+    }
+  });
+  
+  return true;
+}
+
+var unbindDnsType = 0;
+function changeConnType()
+{
+  if ($('#connType').val() == "ON") {
+    $('input#lanIp').attr('disabled', 'disabled');
+    $('input#mask').attr('disabled', 'disabled');
+    $('input#gw').attr('disabled', 'disabled');
+    if (unbindDnsType == 1) {
+      $('span#dnsType').click(function() {
+        changeOnOffStat(this);
+        changeDnsType(this);
+      });
+    }
+  }
+  else {
+    $('input#lanIp').removeAttr('disabled');
+    $('input#mask').removeAttr('disabled');
+    $('input#gw').removeAttr('disabled');
+    if ($('#dnsType').val() == "ON") {
+      $('span#dnsType').val("OFF");
+      $('span#dnsType').trigger("click");
+    }
+    $('span#dnsType').unbind('click');
+    unbindDnsType = 1;
+  }
+}
+
+function changeDnsType()
+{
+  if ($('#dnsType').val() == "ON") {
+    $('input#dns1').attr('disabled', 'disabled');
+    $('input#dns2').attr('disabled', 'disabled');
+  }
+  else {
+    $('input#dns1').removeAttr('disabled');
+    $('input#dns2').removeAttr('disabled');
+  }
+}
+
+$(document).ready(function() {
+  var id, head, body;
+
+  isLoggedIn();
+
+  console.log("document ready!!!");
+
+  $('#lanMenu').removeClass('menu');
+  $('#lanMenu').addClass('mainmenu');
+
+  /* Empty category arrays */
+  emptyElementArrays();
+
+  /* Draw items */
+  switchOnOff(AdvApConnType, "connType", changeConnType);
+  text(AdvIPAddr, "lanIp");
+  $('input#lanIp').attr('maxlength', 15);
+  text(AdvSubnetMask, "mask");
+  $('input#mask').attr('maxlength', 15);
+  text(SelectType3WarnGateway, "gw");
+  $('input#gw').attr('maxlength', 15);
+  switchOnOff(AdvApDnsType, "dnsType", changeDnsType);
+  text(SelectType3WarnDDNS1, "dns1");
+  $('input#dns1').attr('maxlength', 15);
+  text(SelectType3WarnDDNS2, "dns2");
+  $('input#dns2').attr('maxlength', 15);
+
+  var lanInfo = getData("/f/rp/getLanSetting");
+  if (lanInfo != null){
+    $.each(lanInfo, function(key, value){
+      doAssignValues(key, value);
+    });
+    changeDnsType();
+    changeConnType();
+  }
+
+  /* Apply action */
+  $("#Apply").click(function(event) {
+    if (setData("/f/rp/setLanSetting")) {
+      rebootTimeout = rebootTimeoutOnRepeaterMode;
+      showWindow("waitWindow");
+      countdownWindow("rebootingDig");
+    }
+  });
+
+  /* Cancel action */
+  $("#Cancel").click(function(event) {
+    console.log("cancel click...");
+    refresh();
+  });
+});
+</script>
+</head>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" align="center" valign="top">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                <script type="text/javascript">writeRpLeftMenu();</script> 
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top"><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td colspan="2" align="left"><h4><script>document.write(LANSetting);</script></h4></td>
+                </tr>
+                <tr>
+                   <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                </tr>
+                <tr id="connType">
+                </tr>
+                <tr id="lanIp">
+                </tr>
+                <tr id="mask">
+                </tr>
+                <tr id="gw">
+                </tr>
+                <tr id="dnsType">
+                </tr>
+                <tr id="dns1">
+                </tr>
+                <tr id="dns2">
+                </tr>
+                <script type="text/javascript">writeApplyCancel();</script>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+</div>
+<!-- End Save for Web Slices -->
+<script type="text/javascript">
+  writeWindow("cover");
+  writeWindow("waitWindow");
+</script>
+</body>
+</html>

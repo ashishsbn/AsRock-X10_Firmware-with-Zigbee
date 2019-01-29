@@ -1,0 +1,57 @@
+--- a/signal.c
++++ b/signal.c
+@@ -42,6 +42,9 @@
+ 		msg = "reboot";
+ 		break;
+ 	case SIGUSR1:
++		event = RB_HALT_SYSTEM;
++		msg = "halt";
++		break;
+ 	case SIGUSR2:
+ 		event = RB_POWER_OFF;
+ 		msg = "poweroff";
+--- a/state.c
++++ b/state.c
+@@ -35,6 +35,7 @@
+ 	STATE_RUNNING,
+ 	STATE_SHUTDOWN,
+ 	STATE_HALT,
++	STATE_AUTOBOOT,
+ 	__STATE_MAX,
+ };
+ 
+@@ -144,7 +145,7 @@
+ 		if (reboot_event == RB_POWER_OFF)
+ 			LOG("- power down -\n");
+ 		else
+-			LOG("- reboot -\n");
++			LOG("- halt -\n");
+ 
+ 		/* Allow time for last message to reach serial console, etc */
+ 		sleep(1);
+@@ -161,6 +162,11 @@
+ 			sleep(1);
+ 		break;
+ 
++	case STATE_AUTOBOOT:
++		LOG("- reboot -\n");
++		reboot(reboot_event);
++		break;
++
+ 	default:
+ 		ERROR("Unhandled state %d\n", state);
+ 		return;
+@@ -186,6 +192,12 @@
+ 		return;
+ 	DEBUG(2, "Shutting down system with event %x\n", event);
+ 	reboot_event = event;
+-	state = STATE_SHUTDOWN;
++	if (reboot_event == RB_AUTOBOOT) {
++		state = STATE_AUTOBOOT;
++	} else if (reboot_event == RB_HALT_SYSTEM) {
++		state = STATE_HALT;
++	} else if (reboot_event == RB_POWER_OFF) {
++		state = STATE_SHUTDOWN;
++	}
+ 	state_enter();
+ }

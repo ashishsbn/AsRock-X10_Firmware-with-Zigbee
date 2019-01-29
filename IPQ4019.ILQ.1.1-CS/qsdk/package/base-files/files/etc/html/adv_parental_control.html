@@ -1,0 +1,1996 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<META HTTP-EQUIV="Pragma" CONTENT="no-cache" />
+<META HTTP-EQUIV="Expires" CONTENT="0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="includes/jquery.min.js"></script>
+<script type="text/javascript" src="includes/jquery-ui.min.js"></script>
+<script type="text/javascript" src="includes/json2.js"></script>
+<script type="text/javascript" src="includes/asrock.js"></script>
+<script type="text/javascript" src="includes/idletimer.js"></script>
+<script type="text/javascript">writeTitle();</script>
+<script type="text/javascript" src="lang/multilanguage.js"></script>
+<link rel="stylesheet" type="text/css" href="default.css" />
+<script type="text/javascript">
+var kids2gIdList = ["kids2gEnable", "kids2gScheduleEnable", "kids2gSsid", "kids2gAuthMode", "kids2gPassword"];
+var kids5gIdList = ["kids5gEnable", "kids5gScheduleEnable", "kids5gSsid", "kids5gAuthMode", "kids5gPassword"];
+
+function setData()
+{
+  var argu;
+  var i, kidsIdList, ssid, authMode, password;
+  var filterList, accessList, tableRows, cell;
+  argu = "";
+  
+  for (i = 0; i < 2; i++) {
+    if (i == 0) {
+      kidsIdList = kids2gIdList;
+    }
+    else {
+      kidsIdList = kids5gIdList;
+      argu += "&";
+    }
+    argu += kidsIdList[0] + "=" + parseValueOfOnOff($('#' + kidsIdList[0]).val());
+    argu += "&" + kidsIdList[1] + "=" + parseValueOfOnOff($('#' + kidsIdList[1]).val());
+    ssid = $('input#' + kidsIdList[2]).val();
+    if (!checkSSID(ssid) || !checkSpace(ssid)) {
+      alert(WirelessWarn1);
+      $('input#' + kidsIdList[2]).focus();
+      return false;
+    }
+    argu += "&" + kidsIdList[2] + "=" + encodeURIComponent(ssid);
+    
+    authMode = $('select#' + kidsIdList[3]).val();
+    argu += "&" + kidsIdList[3] + "=" + authMode;
+    if (authMode == 1 || authMode == 2) {
+      password = $('input#' + kidsIdList[4]).val();
+      if (password.length < 8) {
+        alert(WirelessWarn2);
+        $('input#' + kidsIdList[4]).focus();
+        return false;
+      }
+      else if (password.length > 63) {
+        alert(WirelessWarn3);
+        $('input#' + kidsIdList[4]).focus();
+        return false;
+      }
+      else if (!checkSpace(password)) {
+        alert(WirelessWarnPsk);
+        $('input#' + kidsIdList[4]).focus();
+        return false;
+      }
+      argu += "&" + kidsIdList[4] + "=" + encodeURIComponent(password);
+    }
+  }
+  
+  // URL Filter
+  argu += "&parentalControlUrlFilterEnabled=" + parseValueOfOnOff($('#parentalControlUrlFilterEnabled').val());
+  filterList = document.getElementById("parentalControlUrlFilterList");
+  tableRows = filterList.getElementsByTagName('tr');
+  argu += "&numOfUrlFilter=" + (tableRows.length - 2);
+  
+  for (i = 2; i < tableRows.length; i++) {
+    cell = tableRows[i].getElementsByTagName('td');
+    
+    if (!cell.length) {
+      continue;
+    }
+    
+    argu += "&url" + padZero(i-2, 3, 1) + "=" + encodeURIComponent(cell[0].innerHTML);
+  }
+  
+  // Keyword Filter
+  argu += "&parentalControlKeywordFilterEnabled=" + parseValueOfOnOff($('#parentalControlKeywordFilterEnabled').val());
+  filterList = document.getElementById("parentalControlKeywordFilterList");
+  tableRows = filterList.getElementsByTagName('tr');
+  argu += "&numOfKeywordFilter=" + (tableRows.length - 2);
+  
+  for (i = 2; i < tableRows.length; i++) {
+    cell = tableRows[i].getElementsByTagName('td');
+    
+    if (!cell.length) {
+      continue;
+    }
+    
+    argu += "&keyword" + padZero(i-2, 3, 1) + "=" + encodeURIComponent(cell[0].innerHTML);
+  }
+  
+  argu += "&parentalControlAccessFilterEnabled=" + parseValueOfOnOff($('#parentalControlAccessFilterEnabled').val());
+
+  /*
+  accessList = document.getElementById("parentalControlAccessFilterList");
+  tableRows = accessList.getElementsByTagName('tr');
+  argu += "&numOfAccessFilter=" + (tableRows.length - 2);
+  
+  for (i = 2; i < tableRows.length; i++) {
+    cell = tableRows[i].getElementsByTagName('td');
+    
+    if (!cell.length) {
+      continue;
+    }
+    
+    argu += "&access" + padZero(i-2, 3, 1) + "=" + encodeURIComponent(cell[0].innerHTML);
+  }
+  */
+
+  console.log(argu);
+  
+  $.ajax({
+    url: "/f/setWlanApKids",
+    type: "POST",
+    data: argu,
+    dataType: "json",
+    success: function(result) {
+      console.log(result);
+    },
+    error : function() {
+      console.log("post /f/setWlanApKids error");
+    }
+  });
+  
+  return true;
+}
+
+function checkEnableSchedule(switchThis)
+{
+  if ($('#' + switchThis.id).val() == "ON") {
+	if(switchThis.id == "kids2gScheduleEnable"){
+		showdiv('wirelessSchedule');
+	}else{
+		showdiv('wirelessSchedule5G');
+	}
+  }
+}
+function checkUrlFilterEnabled(switchThis)
+{
+  if ($('#' + switchThis.id).val() == "ON") {
+    $('#parentalControlUrlFilterList').show();
+	$('#blankOfUrlFilterList').show();
+  }
+  else {
+    $('#parentalControlUrlFilterList').hide();
+	$('#blankOfUrlFilterList').hide();
+  }
+}
+
+function checkKeywordFilterEnabled(switchThis)
+{
+  if ($('#' + switchThis.id).val() == "ON") {
+    $('#parentalControlKeywordFilterList').show();
+	$('#blankOfKeywordFilterList').show();
+  }
+  else {
+    $('#parentalControlKeywordFilterList').hide();
+	$('#blankOfKeywordFilterList').hide();
+  }
+}
+
+function updatePasswordAttr(authModeId, passwordId, maskId)
+{
+  var authMode;
+  
+  authMode = parseInt($('select#' + authModeId).val());
+  
+  if (authMode == 0) {
+    $('input#' + passwordId).attr('disabled', 'disabled');
+    $('input#' + maskId).attr('disabled', 'disabled');
+  }
+  else {
+    $('input#' + passwordId).removeAttr('disabled');
+    $('input#' + maskId).removeAttr('disabled');
+  }
+}
+
+function update2gPasswordAttr()
+{
+  updatePasswordAttr("kids2gAuthMode", "kids2gPassword", "pskMask2g");
+}
+
+function update5gPasswordAttr()
+{
+  updatePasswordAttr("kids5gAuthMode", "kids5gPassword", "pskMask5g");
+}
+
+function changePsk2gStat(maskChecked)
+{
+  changePassStat("kids2gPassword", maskChecked);
+}
+
+function changePsk5gStat(maskChecked)
+{
+  changePassStat("kids5gPassword", maskChecked);
+}
+
+function afterAssign()
+{
+  update2gPasswordAttr();
+  update5gPasswordAttr();
+  checkUrlFilterEnabled(document.getElementById('parentalControlUrlFilterEnabled'));
+  checkKeywordFilterEnabled(document.getElementById('parentalControlKeywordFilterEnabled'));
+}
+
+function addUrlFilter(url, check)
+{
+  var tableRows, i, cell;
+  
+  tableRows = document.getElementById("parentalControlUrlFilterList").getElementsByTagName('tr');
+  for (i = 2; i < tableRows.length; i++) {
+    cell = tableRows[i].getElementsByTagName('td');
+    
+    if (!cell.length) {
+        continue;
+    }
+    
+    if (check && cell[0].innerHTML == url) {
+      alert(WANPortForwardingConflict);
+      return false;
+    }
+  }
+  
+  var body, bodyUrl, bodyDelete;
+  bodyUrl = {"align" : "left", "wordBreakAll" : "1", "value" : url};
+  bodyDelete = {"classes" : "parentalControlUrlFilterListDel", "isImage" : "1", "imgSrc" : "images/icon-.png"};
+  if ((($('#parentalControlUrlFilterListTableBody').children().length) % 2) == 0) {
+    bodyUrl["bgcolor"] = "#333333";
+    bodyDelete["bgcolor"] = "#333333";
+  }
+  body = [bodyUrl, bodyDelete];
+  $('#parentalControlUrlFilterListTableBody').append(newTableBody(body));
+  
+  return true;
+}
+
+function addUserDefinedUrlFilter()
+{
+  var url;
+  
+  if($('#parentalControlUrlFilterEnabled').val() == "OFF")
+    return false;
+  
+  url = $('input[name="url"]').val();
+  if (url.length == 0) {
+    alert(WANPortForwardingConflict);
+    return false;
+  }
+  
+  if(addUrlFilter(url.toLowerCase(), 1)) {
+    $('input[name="url"]').val("");
+  }
+  
+  return true;
+}
+
+function deleteUrlFilter()
+{
+  if($('#parentalControlUrlFilterEnabled').val() == "OFF")
+    return false;
+  
+  if (!confirm(LANWarn7)) {
+    return false;
+  }
+  else {
+    $(this).closest('tr').remove();
+  }
+}
+
+function addKeywordFilter(keyword, check)
+{
+  var tableRows, i, cell;
+  
+  tableRows = document.getElementById("parentalControlKeywordFilterList").getElementsByTagName('tr');
+  for (i = 2; i < tableRows.length; i++) {
+    cell = tableRows[i].getElementsByTagName('td');
+    
+    if (!cell.length) {
+        continue;
+    }
+    
+    if (check && cell[0].innerHTML == keyword) {
+      alert(WANPortForwardingConflict);
+      return false;
+    }
+  }
+  
+  var body, bodyKeyword, bodyDelete;
+  bodyKeyword = {"align" : "left", "wordBreakAll" : "1", "value" : keyword};
+  bodyDelete = {"classes" : "parentalControlKeywordFilterListDel", "isImage" : "1", "imgSrc" : "images/icon-.png"};
+  if ((($('#parentalControlKeywordFilterListTableBody').children().length) % 2) == 0) {
+    bodyKeyword["bgcolor"] = "#333333";
+    bodyDelete["bgcolor"] = "#333333";
+  }
+  body = [bodyKeyword, bodyDelete];
+  $('#parentalControlKeywordFilterListTableBody').append(newTableBody(body));
+  
+  return true;
+}
+
+function addUserDefinedKeywordFilter()
+{
+  var keyword;
+  
+  if($('#parentalControlKeywordFilterEnabled').val() == "OFF")
+    return false;
+  
+  keyword = $('input[name="keyword"]').val();
+  if (keyword.length == 0) {
+    alert(WANPortForwardingConflict);
+    return false;
+  }
+  
+  if(addKeywordFilter(keyword.toLowerCase(), 1)) {
+    $('input[name="keyword"]').val("");
+  }
+  
+  return true;
+}
+
+function deleteKeywordFilter()
+{
+  if($('#parentalControlKeywordFilterEnabled').val() == "OFF")
+    return false;
+  
+  if (!confirm(LANWarn7)) {
+    return false;
+  }
+  else {
+    $(this).closest('tr').remove();
+  }
+}
+
+/*
+function addAccessFilter(clientInfo, check)
+{
+  var tableRows, i, cell;
+  
+  tableRows = document.getElementById("parentalControlAccessFilterList").getElementsByTagName('tr');
+  for (i = 2; i < tableRows.length; i++) {
+    cell = tableRows[i].getElementsByTagName('td');
+    
+    if (!cell.length) {
+        continue;
+    }
+    
+    if (check && cell[0].innerHTML == clientInfo) {
+      alert(WANPortForwardingConflict);
+      return false;
+    }
+  }
+  
+  var body, bodyAccess, bodyDelete;
+  bodyAccess = {"align" : "center", "wordBreakAll" : "1", "value" : clientInfo};
+  bodyDelete = {"classes" : "parentalControlAccessFilterListDel", "isImage" : "1", "imgSrc" : "images/icon-.png"};
+  if ((($('#parentalControlAccessFilterListTableBody').children().length) % 2) == 0) {
+    bodyAccess["bgcolor"] = "#333333";
+    bodyDelete["bgcolor"] = "#333333";
+  }
+  body = [bodyAccess, bodyDelete];
+  $('#parentalControlAccessFilterListTableBody').append(newTableBody(body));
+  
+  return true;
+}
+
+function addUserDefinedAccessFilter()
+{
+  var clientInfo;
+  
+  if($('#parentalControlAccessFilterEnabled').val() == "OFF")
+    return false;
+  
+  clientInfo = $('select#clientList').val();
+  console.log(clientInfo);
+  
+  if (clientInfo.length == 0) {
+    alert(WANPortForwardingConflict);
+    return false;
+  }
+  
+  return addAccessFilter(clientInfo, 1)
+}
+
+function deleteAccessFilter()
+{
+  if($('#parentalControlAccessFilterEnabled').val() == "OFF")
+    return false;
+  
+  if (!confirm(LANWarn7)) {
+    return false;
+  }
+  else {
+    $(this).closest('tr').remove();
+  }
+}
+*/
+
+$(document).ready(function() {
+  var fullSchedule, authModeList;
+  var id, head, body;
+  var i;
+  isLoggedIn();
+  
+  console.log("document ready!!!");
+
+  $('#parentControlMenu').removeClass('menu');
+  $('#parentControlMenu').addClass('mainmenu');
+  
+  /* Empty category arrays */
+  emptyElementArrays();
+
+  /* Draw items */
+  getSCHData('/f/getSchedule','kid24Gonoff', "kids2gScheduleEnable");
+  switchOnOff(Dash24G + " " + Wireless2GEnable, "kids2gEnable");
+  fullSchedule = Wireless2GSCHEnable + " <a href=\"#\" onclick=\"showdiv('wirelessSchedule');\"><span>" + GeneralEdit + "</span></a>";
+  switchOnOff(fullSchedule, "kids2gScheduleEnable", checkEnableSchedule);
+  text(Wireless2GSSID, "kids2gSsid");
+  $('input#kids2gSsid').attr('maxlength', 32);
+  authModeList = {"0" : "OPEN", "1" : "WPA2-AES", "2" : "WPA Mixed-TKIP+AES"};
+  select(Wireless2GAuthMethod, "kids2gAuthMode", authModeList, update2gPasswordAttr);
+  text(Wireless2GPassword, "kids2gPassword", null, 1);
+  $('input#kids2gPassword').after("&nbsp;<input type=\"checkbox\" id=\"pskMask2g\" checked onclick=\"changePsk2gStat(this.checked);\"><span>" + WirelessMask + "</span></input>");
+  
+  getSCHData('/f/getSchedule','kid5Gonoff', "kids5gScheduleEnable");
+  switchOnOff(Dash5G + " " + Wireless5GEnable, "kids5gEnable");
+  fullSchedule5 = Wireless5GSCHEnable + " <a href=\"#\" onclick=\"showdiv('wirelessSchedule5G');\"><span>" + GeneralEdit + "</span></a>";
+  switchOnOff(fullSchedule5, "kids5gScheduleEnable", checkEnableSchedule);
+  text(Wireless5GSSID, "kids5gSsid");
+  $('input#kids5gSsid').attr('maxlength', 32);
+  select(Wireless5GAuthMethod, "kids5gAuthMode", authModeList, update5gPasswordAttr);
+  text(Wireless5GPassword, "kids5gPassword", null, 1);
+  $('input#kids5gPassword').after("&nbsp;<input type=\"checkbox\" id=\"pskMask5g\" checked onclick=\"changePsk5gStat(this.checked);\"><span>" + WirelessMask + "</span></input>");
+  
+  switchOnOff(ParControlUrlFilter, "parentalControlUrlFilterEnabled", checkUrlFilterEnabled);
+  switchOnOff(ParControlKeywordFilter, "parentalControlKeywordFilterEnabled", checkKeywordFilterEnabled);
+  //switchOnOff(ParControlAccessFilter, "parentalControlAccessFilterEnabled");
+  
+  id = "parentalControlUrlFilterList";
+  head = [{"desc" : ParControlUrlFilterList, "width" : "100%", "colspan" : "2", "align" : "left"}];
+  body = [{"width" : "90%", "align" : "left", "bgcolor" : "#333333", "isInput" : "1", "inputWidth" : "99%", "name" : "url"}, 
+          {"id" : id + "Add", "bgcolor" : "#333333", "width" : "10%", "isImage" : "1", "imgSrc" : "images/icon+.png"}];
+  tableList(id, head, body);
+  $('#' + id + 'Add').click(addUserDefinedUrlFilter);
+  $('#' + id + 'TableBody').on("click", '.' + id + 'Del', deleteUrlFilter);
+  
+  id = "parentalControlKeywordFilterList";
+  head = [{"desc" : ParControlKeywordFilterList, "width" : "100%", "colspan" : "2", "align" : "left"}];
+  body = [{"width" : "90%", "align" : "left", "bgcolor" : "#333333", "isInput" : "1", "inputWidth" : "99%", "name" : "keyword"}, 
+          {"id" : id + "Add", "bgcolor" : "#333333", "width" : "10%", "isImage" : "1", "imgSrc" : "images/icon+.png"}];
+  tableList(id, head, body);
+  $('#' + id + 'Add').click(addUserDefinedKeywordFilter);
+  $('#' + id + 'TableBody').on("click", '.' + id + 'Del', deleteKeywordFilter);
+
+  /*
+  id = "parentalControlAccessFilterList";
+  head = [{"desc" : ParControlAccessFilterList, "width" : "70%"},
+          {"desc" : ParAddDelete, "width" : "30%"}];
+  body = [{"id" : "clientList", "bgcolor" : "#333333", "align" : "center", "isSelect" : "1"}, 
+          {"id" : id + "Add", "bgcolor" : "#333333", "isImage" : "1", "imgSrc" : "images/icon+.png"}];
+  tableList(id, head, body);
+  $('#' + id + 'Add').click(addUserDefinedAccessFilter);
+  $('#' + id + 'TableBody').on("click", '.' + id + 'Del', deleteAccessFilter);
+  */
+
+  /* Get the data and fill the DOM */
+  var wlanKidsInfo = getData("/f/getWlanApKids");
+  if (wlanKidsInfo != null) {
+    wlanKidsInfo.kids2gSsid = decodeURIComponent(wlanKidsInfo.kids2gSsid);
+    wlanKidsInfo.kids2gPassword = decodeURIComponent(wlanKidsInfo.kids2gPassword);
+    wlanKidsInfo.kids5gSsid = decodeURIComponent(wlanKidsInfo.kids5gSsid);
+    wlanKidsInfo.kids5gPassword = decodeURIComponent(wlanKidsInfo.kids5gPassword);
+    /* Put the value into the DOM by key (id) */
+    $.each(wlanKidsInfo, function(key, value) {
+      console.log("key : " + key + " value : " + value);
+      doAssignValues(key, value);
+    });
+  }
+  
+  var parentalControlInfo = getData("/f/getParentalControl");
+  if (parentalControlInfo != null) {
+    // URL Filter
+    if (parentalControlInfo[0].parentalControlUrlFilterEnabled == "0") {
+      $('#parentalControlUrlFilterEnabled').val("OFF");
+    }
+    else if (parentalControlInfo[0].parentalControlUrlFilterEnabled == "1") {
+      $('#parentalControlUrlFilterEnabled').val("ON");
+      $('span#parentalControlUrlFilterEnabled').trigger("click");
+    }
+    for (i = 0; i < parseInt(parentalControlInfo[0].numOfUrlFilter); i++) {
+      addUrlFilter(decodeURIComponent(parentalControlInfo[1 + i].url), 0);
+    }
+    
+    // Keyword Filter
+    if (parentalControlInfo[0].parentalControlKeywordFilterEnabled == "0") {
+      $('#parentalControlKeywordFilterEnabled').val("OFF");
+    }
+    else if (parentalControlInfo[0].parentalControlKeywordFilterEnabled == "1") {
+      $('#parentalControlKeywordFilterEnabled').val("ON");
+      $('span#parentalControlKeywordFilterEnabled').trigger("click");
+    }
+    for (i = 0; i < parentalControlInfo[0].numOfKeywordFilter; i++) {
+      addKeywordFilter(decodeURIComponent(parentalControlInfo[1 + parseInt(parentalControlInfo[0].numOfUrlFilter) + i].keyword), 0);
+    }
+
+    /*
+    // Access Filter
+    if (parentalControlInfo[0].parentalControlAccessFilterEnabled == "0") {
+      $('#parentalControlAccessFilterEnabled').val("OFF");
+    }
+    else if (parentalControlInfo[0].parentalControlAccessFilterEnabled == "1") {
+      $('#parentalControlAccessFilterEnabled').val("ON");
+      $('span#parentalControlAccessFilterEnabled').trigger("click");
+    }
+    for (i = 0; i < parentalControlInfo[0].numOfAccessFilter; i++) {
+      addAccessFilter(decodeURIComponent(parentalControlInfo[1 + 
+                      parseInt(parentalControlInfo[0].numOfUrlFilter) + 
+                      parseInt(parentalControlInfo[0].numOfKeywordFilter) + i].clientInfo), 0);
+    }
+    */
+  }
+  
+  $.ajax({
+    url:'/f/getDashboardClientList',
+    type: "GET",
+    success: function(result) {
+      var i, clientInfo;
+      for (i=1; i<=parseInt(result.client[0].num); i++) {
+        console.log(result.client[i].ipAddr);
+        console.log(decodeURIComponent(result.client[i].name));
+        console.log(result.client[i].macAddr);
+        clientInfo = result.client[i].ipAddr + "(" 
+                     + decodeURIComponent(result.client[i].name)
+                     + "@" + result.client[i].macAddr + ")";
+        $('select#clientList').append("<option value=\"" + clientInfo + "\">" 
+                                      + clientInfo + "</option>");
+      }
+	},
+    error : function() {
+      console.log("post /f/getDashboardClientList error");
+    }
+  });
+  
+  afterAssign();
+  
+  closeWindow("wirelessSchedule");
+  closeWindow("wirelessSchedule5G");
+  $('[id=generalApply]').click(function(event) {
+    console.log("apply click...");
+    closeWindow("wirelessSchedule");
+	setSCHData("kid24Gonoff","/f/setSchedule","kids2gScheduleEnable");
+    showWindow("waitWindow");
+    countdownWindow("waitingDig");
+  });
+ $('[id=general5GApply]').click(function(event) {
+    console.log("apply click...");
+    closeWindow("wirelessSchedule5G");
+	setSCHData("kid5Gonoff","/f/setSchedule","kids5gScheduleEnable");
+      showWindow("waitWindow");
+      countdownWindow("waitingDig");
+  });
+  
+  /* Apply action */
+  $('#Apply').click(function(event) {
+    console.log("apply click...");
+    closeWindow("wirelessSchedule");
+    closeWindow("wirelessSchedule5G");
+    if (setData()) {
+      //Need more time to reload
+      waitTimeout=30;
+      showWindow("waitWindow");
+      countdownWindow("waitingDig");
+    }
+  });
+  
+  /* Cancel action */
+  $("#Cancel").click(function(event) {
+    console.log("cancel click...");
+    refresh();
+  });
+});
+</script>
+</head>
+<form id="schedule">
+<input type="hidden" name="Device.schedule.Enable">
+<input type="hidden" name="Device.schedule.Time">
+<input type="hidden" name="Device.schedule.name" id="schName" value="">
+<input type="hidden" name="Device.schedule.Schedule.Mon" id="schMon" value="">
+<input type="hidden" name="Device.schedule.Schedule.Tue" id="schTue" value="">
+<input type="hidden" name="Device.schedule.Schedule.Wed" id="schWed" value="">
+<input type="hidden" name="Device.schedule.Schedule.Thu" id="schThu" value="">
+<input type="hidden" name="Device.schedule.Schedule.Fri" id="schFri" value="">
+<input type="hidden" name="Device.schedule.Schedule.Sat" id="schSat" value="">
+<input type="hidden" name="Device.schedule.Schedule.Sun" id="schSun" value="">
+</form>
+<form id="schedule5G">
+<input type="hidden" name="Device.schedule5G.Enable">
+<input type="hidden" name="Device.schedule5G.Time">
+<input type="hidden" name="Device.schedule5G.name" id="schName5G" value="">
+<input type="hidden" name="Device.schedule5G.Schedule.Mon" id="schMon5G" value="">
+<input type="hidden" name="Device.schedule5G.Schedule.Tue" id="schTue5G" value="">
+<input type="hidden" name="Device.schedule5G.Schedule.Wed" id="schWed5G" value="">
+<input type="hidden" name="Device.schedule5G.Schedule.Thu" id="schThu5G" value="">
+<input type="hidden" name="Device.schedule5G.Schedule.Fri" id="schFri5G" value="">
+<input type="hidden" name="Device.schedule5G.Schedule.Sat" id="schSat5G" value="">
+<input type="hidden" name="Device.schedule5G.Schedule.Sun" id="schSun5G" value="">
+</form>
+<body onload="preloadX10Images()">
+<div style="width:960px;margin:0px auto;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td><table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <tr>
+          <td height="20" valign="top">&nbsp;</td>
+        </tr>
+        <script type="text/javascript">writeHeader();</script>
+        <tr>
+          <td align="left" background="images/UI-new_10.png"><table width="100%" border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>&nbsp;</td>
+              <td width="168">&nbsp;</td>
+              <td>&nbsp;</td>
+              <td width="736" align="center" valign="top">&nbsp;</td>
+            </tr>
+            <tr>
+              <td width="20">&nbsp;</td>
+              <td valign="top"><table border="0" cellspacing="0" cellpadding="0">
+                <script type="text/javascript">writeLeftMenu();</script> 
+              </table></td>
+              <td width="15">&nbsp;</td>
+              <td align="center" valign="top"><table width="98%" border="0" cellspacing="2" cellpadding="2">
+                <tr>
+                  <td colspan="2" align="left"><h4><script>document.write(AdvParentalControl);</script></h4></td>
+                </tr>
+                <tr>
+                   <td colspan="2" align="left" class="style8"><img src="images/line-s.png" width="470" height="5" /></td>
+                </tr>
+                <tr id="kids2gEnable">
+                </tr>
+                <tr id="kids2gScheduleEnable">
+                </tr>
+                <tr id="kids2gSsid">
+                </tr>
+                <tr id="kids2gAuthMode">
+                </tr>
+                <tr id="kids2gPassword">
+                </tr>
+                <tr id="kids5gEnable">
+                </tr>
+                <tr id="kids5gScheduleEnable">
+                </tr>
+                <tr id="kids5gSsid">
+                </tr>
+                <tr id="kids5gAuthMode">
+                </tr>
+                <tr id="kids5gPassword">
+                </tr>
+                <tr id="parentalControlUrlFilterEnabled">
+                </tr>
+                <tr id="parentalControlKeywordFilterEnabled">
+                </tr>
+                <tr id="parentalControlAccessFilterEnabled">
+                </tr>
+                <tr id="blankOfUrlFilterList">
+                </tr>
+                <tr id="parentalControlUrlFilterList">
+                </tr>
+				<tr id="blankOfKeywordFilterList">
+                </tr>
+				<tr id="parentalControlKeywordFilterList">
+                </tr>
+				<tr>
+                </tr>
+                <!--
+                <tr id="parentalControlAccessFilterList">
+                </tr>
+                -->
+                <script type="text/javascript">writeApplyCancel();</script>
+              </table></td>
+            </tr>
+          </table></td>
+        </tr>
+        <tr>
+          <td><img src="images/UI-new_11.png" width="960" height="8" /></td>
+        </tr>
+      </table></td>
+    </tr>
+  </table>
+  <script type="text/javascript">writeFooter();</script>
+</div>
+<!-- End Save for Web Slices -->
+<div id="wirelessSchedule" style="display:none">
+<table width="502" border="0" cellspacing="0" cellpadding="0">
+  <tbody><tr>
+    <td background="images/box_01.png" width="502" height="46"><table width="100%" border="0" cellspacing="0" cellpadding="0">
+      <tbody><tr>
+        <td width="92%" align="left"><p ><script>document.write(Sch2GTimeManage);</script></p></td>
+        <td width="8%" align="left">
+          <a href="#" onmouseout="MM_swapImage('Image24','','images/botton05-nol.png',1)" onmouseover="MM_swapImage('Image24','','images/botton05-over.png',1)"><img src="images/botton05-nol.png" name="Image24" width="26" height="26" border="0" id="Image24" onclick="closeWindow('wirelessSchedule');"></a>
+        </td>
+      </tr>
+    </tbody></table></td>
+  </tr>
+  <!-- <tr>
+    <td width="502" height="46" align="left" background="images/box_02.png">&nbsp;</td>
+  </tr> -->
+  <tr>
+    <td width="502" align="center" background="images/box_03.png"><table width="96%" border="0" cellpadding="3" cellspacing="1">
+      <tbody>
+        <tr>
+          <td width="12%" align="center" bgcolor="#666666"><h5 ><script>document.write(ParTime);</script></h5></td>
+          <td width="12%" align="center" bgcolor="#666666"><h5 ><script>document.write(ParMon);</script></h5></td>
+          <td width="12%" align="center" bgcolor="#666666"><h5 ><script>document.write(ParTue);</script></h5></td>
+          <td width="12%" align="center" bgcolor="#666666"><h5 ><script>document.write(ParWed);</script></h5></td>
+          <td width="12%" align="center" bgcolor="#666666"><h5 ><script>document.write(ParThu);</script></h5></td>
+          <td width="12%" align="center" bgcolor="#666666"><h5 ><script>document.write(ParFri);</script></h5></td>
+          <td width="12%" align="center" bgcolor="#666666"><h5 ><script>document.write(ParSat);</script></h5></td>
+          <td width="12%" align="center" bgcolor="#666666"><h5 ><script>document.write(ParSun);</script></h5></td>
+        </tr>
+      <tr>
+        <td align="left" class="style3">00~01</td>
+        <td align="center" class="style5"><span id="sch10" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch20" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch30" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch40" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch50" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch60" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch70" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">01~02</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch11" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch21" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch31" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch41" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch51" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch61" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch71" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">02~03</td>
+        <td align="center" class="style5"><span id="sch12" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch22" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch32" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch42" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch52" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch62" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch72" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">03~04</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch13" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch23" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch33" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch43" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch53" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch63" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch73" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">04~05</td>
+        <td align="center" class="style5"><span id="sch14" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch24" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch34" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch44" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch54" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch64" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch74" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">05~06</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch15" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch25" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch35" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch45" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch55" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch65" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch75" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">06~07</td>
+        <td align="center" class="style5"><span id="sch16" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch26" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch36" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch46" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch56" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch66" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch76" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">07~08</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch17" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch27" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch37" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch47" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch57" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch67" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch77" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">08~09</td>
+        <td align="center" class="style5"><span id="sch18" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch28" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch38" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch48" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch58" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch68" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch78" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">09~10</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch19" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch29" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch39" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch49" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch59" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch69" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch79" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">10~11</td>
+        <td align="center" class="style5"><span id="sch110" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch210" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch310" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch410" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch510" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch610" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch710" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">11~12</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch111" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch211" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch311" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch411" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch511" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch611" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch711" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">12~13</td>
+        <td align="center" class="style5"><span id="sch112" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch212" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch312" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch412" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch512" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch612" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch712" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">13~14</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch113" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch213" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch313" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch413" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch513" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch613" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch713" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">14~15</td>
+        <td align="center" class="style5"><span id="sch114" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch214" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch314" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch414" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch514" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch614" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch714" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">15~16</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch115" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch215" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch315" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch415" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch515" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch615" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch715" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">16~17</td>
+        <td align="center" class="style5"><span id="sch116" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch216" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch316" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch416" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch516" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch616" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch716" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">17~18</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch117" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch217" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch317" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch417" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch517" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch617" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch717" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">18~19</td>
+        <td align="center" class="style5"><span id="sch118" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch218" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch318" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch418" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch518" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch618" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch718" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">19~20</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch119" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch219" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch319" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch419" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch519" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch619" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch719" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">20~21</td>
+        <td align="center" class="style5"><span id="sch120" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch220" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch320" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch420" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch520" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch620" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch720" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">21~22</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch121" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch221" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch321" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch421" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch521" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch621" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch721" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">22~23</td>
+        <td align="center" class="style5"><span id="sch122" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch222" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch322" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch422" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch522" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch622" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch722" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">23~24</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch123" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch223" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch323" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch423" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch523" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch623" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch723" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>      
+    </tbody></table></td>
+  </tr>
+  <!-- <tr>
+    <td height="5" background="images/box_03.png">&nbsp;</td>
+  </tr>
+  <tr>
+    <td height="5" background="images/box_03.png">&nbsp;</td>
+  </tr>
+  <tr>
+    <td align="center" background="images/box_03.png">&nbsp;</td>
+  </tr> -->
+  <tr>
+    <td align="center" background="images/box_03.png"><table border="0" cellspacing="0" cellpadding="0">
+      <tbody>
+        <tr>
+          <td align="center">
+          <input id="generalApply" type="button" class="button1" onclick="closeWindow('wirelessSchedule');gotoSetSCH();" value="Apply">
+          <input id="generalCancel" type="button" class="button1" onclick="closeWindow('wirelessSchedule');" value="Cancel">
+          </td>
+        <!-- <td>
+          <table width="119" height="39" border="0" cellspacing="0" cellpadding="0">
+          <tbody><tr>
+            <td align="center" valign="middle" background="images/botton02.png"><a href="#">Apply</a></td>
+          </tr>
+          </tbody></table>
+        </td>
+        <td align="right">
+          <table width="119" height="39" border="0" cellspacing="0" cellpadding="0">
+          <tbody><tr>
+            <td align="center" valign="middle" background="images/botton02.png"><a href="#" onclick="closeWindow('wirelessSchedule')">Cancel </a></td>
+          </tr>
+          </tbody>
+          </table>
+        </td> -->
+      </tr>
+    </tbody></table></td>
+  </tr>
+  <tr>
+    <td><img src="images/box_04.png" width="502" height="28"></td>
+  </tr>
+</tbody></table>
+</div>
+<div id="wirelessSchedule5G" style="display:none">
+<table width="502" border="0" cellspacing="0" cellpadding="0">
+  <tbody><tr>
+    <td background="images/box_01.png" width="502" height="46"><table width="100%" border="0" cellspacing="0" cellpadding="0">
+      <tbody><tr>
+        <td width="92%" align="left"><p ><script>document.write(Sch5GTimeManage);</script></p></td>
+        <td width="8%" align="left">
+          <a href="#" onmouseout="MM_swapImage('Image24','','images/botton05-nol.png',1)" onmouseover="MM_swapImage('Image24','','images/botton05-over.png',1)"><img src="images/botton05-nol.png" name="Image24" width="26" height="26" border="0" id="Image24" onclick="closeWindow('wirelessSchedule5G');"></a>
+        </td>
+      </tr>
+    </tbody></table></td>
+  </tr>
+  <!-- <tr>
+    <td width="502" height="46" align="left" background="images/box_02.png">&nbsp;</td>
+  </tr> -->
+  <tr>
+    <td width="502" align="center" background="images/box_03.png"><table width="96%" border="0" cellpadding="3" cellspacing="1">
+      <tbody>
+        <tr>
+          <td width="12%" align="center" bgcolor="#666666"><h5 ><script>document.write(ParTime);</script></h5></td>
+          <td width="12%" align="center" bgcolor="#666666"><h5 ><script>document.write(ParMon);</script></h5></td>
+          <td width="12%" align="center" bgcolor="#666666"><h5 ><script>document.write(ParTue);</script></h5></td>
+          <td width="12%" align="center" bgcolor="#666666"><h5 ><script>document.write(ParWed);</script></h5></td>
+          <td width="12%" align="center" bgcolor="#666666"><h5 ><script>document.write(ParThu);</script></h5></td>
+          <td width="12%" align="center" bgcolor="#666666"><h5 ><script>document.write(ParFri);</script></h5></td>
+          <td width="12%" align="center" bgcolor="#666666"><h5 ><script>document.write(ParSat);</script></h5></td>
+          <td width="12%" align="center" bgcolor="#666666"><h5 ><script>document.write(ParSun);</script></h5></td>
+        </tr>
+      <tr>
+        <td align="left" class="style3">00~01</td>
+        <td align="center" class="style5"><span id="sch5G10" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G20" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G30" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G40" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G50" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G60" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G70" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">01~02</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G11" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G21" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G31" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G41" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G51" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G61" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G71" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">02~03</td>
+        <td align="center" class="style5"><span id="sch5G12" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G22" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G32" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G42" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G52" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G62" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G72" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">03~04</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G13" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G23" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G33" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G43" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G53" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G63" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G73" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">04~05</td>
+        <td align="center" class="style5"><span id="sch5G14" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G24" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G34" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G44" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G54" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G64" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G74" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">05~06</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G15" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G25" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G35" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G45" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G55" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G65" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G75" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">06~07</td>
+        <td align="center" class="style5"><span id="sch5G16" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G26" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G36" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G46" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G56" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G66" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G76" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">07~08</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G17" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G27" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G37" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G47" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G57" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G67" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G77" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">08~09</td>
+        <td align="center" class="style5"><span id="sch5G18" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G28" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G38" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G48" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G58" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G68" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G78" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">09~10</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G19" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G29" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G39" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G49" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G59" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G69" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G79" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">10~11</td>
+        <td align="center" class="style5"><span id="sch5G110" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G210" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G310" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G410" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G510" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G610" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G710" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">11~12</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G111" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G211" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G311" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G411" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G511" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G611" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G711" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">12~13</td>
+        <td align="center" class="style5"><span id="sch5G112" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G212" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G312" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G412" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G512" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G612" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G712" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">13~14</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G113" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G213" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G313" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G413" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G513" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G613" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G713" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">14~15</td>
+        <td align="center" class="style5"><span id="sch5G114" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G214" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G314" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G414" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G514" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G614" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G714" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">15~16</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G115" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G215" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G315" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G415" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G515" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G615" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G715" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">16~17</td>
+        <td align="center" class="style5"><span id="sch5G116" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G216" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G316" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G416" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G516" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G616" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G716" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">17~18</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G117" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G217" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G317" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G417" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G517" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G617" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G717" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">18~19</td>
+        <td align="center" class="style5"><span id="sch5G118" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G218" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G318" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G418" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G518" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G618" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G718" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">19~20</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G119" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G219" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G319" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G419" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G519" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G619" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G719" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">20~21</td>
+        <td align="center" class="style5"><span id="sch5G120" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G220" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G320" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G420" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G520" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G620" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G720" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">21~22</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G121" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G221" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G321" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G421" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G521" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G621" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G721" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" class="style3">22~23</td>
+        <td align="center" class="style5"><span id="sch5G122" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G222" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G322" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G422" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G522" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G622" value="ON" onclick="changeTimeOnOffStat(this);">
+           <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" class="style5"><span id="sch5G722" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>
+      <tr>
+        <td align="left" bgcolor="#494949" class="style3">23~24</td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G123" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G223" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G323" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G423" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G523" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G623" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>
+        <td align="center" bgcolor="#494949" class="style5"><span id="sch5G723" value="ON" onclick="changeTimeOnOffStat(this);">
+            <img id="imageOn" src="images/icon02-on.png" width="18" height="18"></span>
+        </td>        
+      </tr>      
+    </tbody></table></td>
+  </tr>
+  <!-- <tr>
+    <td height="5" background="images/box_03.png">&nbsp;</td>
+  </tr>
+  <tr>
+    <td height="5" background="images/box_03.png">&nbsp;</td>
+  </tr>
+  <tr>
+    <td align="center" background="images/box_03.png">&nbsp;</td>
+  </tr> -->
+  <tr>
+    <td align="center" background="images/box_03.png"><table border="0" cellspacing="0" cellpadding="0">
+      <tbody>
+        <tr>
+          <td align="center">
+          <input id="general5GApply" type="button" class="button1" onclick="closeWindow('wirelessSchedule5G');gotoSetSCH('kid5G');" value="Apply">
+          <input id="generalCancel" type="button" class="button1" onclick="closeWindow('wirelessSchedule5G');" value="Cancel">
+          </td>
+        <!-- <td>
+          <table width="119" height="39" border="0" cellspacing="0" cellpadding="0">
+          <tbody><tr>
+            <td align="center" valign="middle" background="images/botton02.png"><a href="#">Apply</a></td>
+          </tr>
+          </tbody></table>
+        </td>
+        <td align="right">
+          <table width="119" height="39" border="0" cellspacing="0" cellpadding="0">
+          <tbody><tr>
+            <td align="center" valign="middle" background="images/botton02.png"><a href="#" onclick="closeWindow('wirelessSchedule5G')">Cancel </a></td>
+          </tr>
+          </tbody>
+          </table>
+        </td> -->
+      </tr>
+    </tbody></table></td>
+  </tr>
+  <tr>
+    <td><img src="images/box_04.png" width="502" height="28"></td>
+  </tr>
+</tbody></table>
+</div>
+<script type="text/javascript">
+  writeWindow("cover");
+  writeWindow("waitWindow");
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+#!/bin/sh /etc/rc.common
+
+START=95
+start() {
+	IR_VER1=`ir_cmd -ver | grep "IR FW version" | sed 's/^.*v//g' | sed 's/\..*$//g'`
+        IR_VER2=`ir_cmd -ver | grep "IR FW version" | sed 's/^.*\.//g' | sed 's/ .*$//g'`
+        FILE_VER1=`ls /etc/AR* | sed 's/^.*v//g' | sed 's/\..*$//g'`
+        FILE_VER2=`ls /etc/AR* | sed 's/^.*'v..'//g' |  sed 's/_.*$//g'`
+        FPATH=`ls /etc/AR*`
+
+	ir_cmd -ver | grep "IR FW version" | awk '{print $5,$6}' > /tmp/sysinfo/ir_version 
+
+        if [ -f "/usr/sbin/x10-diag" ]; then
+                exit 1
+        elif [ "$IR_VER1" -ne "$FILE_VER1" ] || [ "$IR_VER2" -ne "$FILE_VER2" ]; then
+                ir_cmd -upgrade "$FPATH"
+        fi
+}
+
+
+stop() {
+        echo "Test Stop!!!"
+}
+
+
+restart() {
+        echo "Test Restart!!!"
+}

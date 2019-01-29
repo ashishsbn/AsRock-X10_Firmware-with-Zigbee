@@ -1,0 +1,15 @@
+#!/bin/sh
+if [ -e /var/factory ]
+then
+#    echo "FACTORY: wps button pressed" > /dev/console
+    touch /var/btnwpspressed
+    exit 0                                                         
+fi
+
+wps_hotplug=$(find /etc/hotplug.d/button -iname "*wps*") 2>/dev/null
+[ -n "$wps_hotplug" ] && exit 0
+
+for dir in /var/run/hostapd-*; do
+	[ -d "$dir" ] || continue
+	hostapd_cli -p "$dir" wps_pbc
+done

@@ -1,0 +1,67 @@
+config interface 'loopback'
+        option ifname 'lo'
+        option proto 'static'
+        option ipaddr '127.0.0.1'
+        option netmask '255.0.0.0'
+
+config globals 'globals'
+        option ula_prefix 'auto'
+
+config interface 'lan'
+        option ifname 'eth1'
+        option type 'bridge'
+        option proto 'dhcp'
+	option hostname 'ASRock-X10'
+        option peerdns '1'
+
+config switch
+        option name 'switch0'
+        option reset '1'
+        option enable_vlan '1'
+
+config switch_vlan
+        option device 'switch0'
+        option vlan '1'
+        option ports '0t 2 3 4 5'
+
+config switch_ext
+        option device 'switch0'
+        option name 'QosPtMode'
+        option port_id '2'
+        option mode 'dscp'
+        option status 'enable'
+
+config switch_ext
+        option device 'switch0'
+        option name 'QosPtMode'
+        option port_id '3'
+        option mode 'dscp'
+        option status 'enable'
+
+config switch_ext
+        option device 'switch0'
+        option name 'QosPtMode'
+        option port_id '4'
+        option mode 'dscp'
+        option status 'enable'
+
+config switch_ext
+        option device 'switch0'
+        option name 'QosPtMode'
+        option port_id '5'
+        option mode 'dscp'
+        option status 'enable'
+
+config switch_ext
+        option device 'switch0'
+        option name 'AclRule'
+        option rule_id '1'
+        option priority '1'
+        option rule_type 'ip4'
+        option port_bitmap '0x3c'
+        option ip_protocol '17'
+        option ip_protocol_mask '0xff'
+        option ip_dst_port '53'
+        option ip_dst_port_mask '0xffff'
+        option packet_drop 'no'
+        option copy_to_cpu 'y'

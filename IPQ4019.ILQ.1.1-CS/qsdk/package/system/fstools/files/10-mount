@@ -1,0 +1,320 @@
+#!/bin/sh
+
+. /lib/functions/block.sh
+
+set_devices(){
+	set_section="$(uci show fstab | grep "$get_uuid" | awk -F "." '{print $2}')"
+	old_device=$(uci get fstab.${set_section}.device)
+
+	[ "$old_device" != "/dev/$device" ]&&{
+		uci set fstab.${set_section}.device="/dev/$device"
+		uci set fstab.${set_section}.target="/tmp/$device_dir"
+		uci set fstab.${set_section}.fstype="$my_fstype"
+		case "$my_fstype" in
+			ext*)
+				uci set fstab.${set_section}.options="rw";;
+			'ntfs')
+				uci set fstab.${set_section}.options="rw";;
+			'exfat')
+				uci set fstab.${set_section}.options="noatime";;
+			'vfat')
+				uci set fstab.${set_section}.options="utf8=1,umask=0000,dmask=0000,fmask=0000";;
+		esac
+		uci commit fstab
+	}
+}
+
+set_fstab(){
+
+	[ -n "$my_fstype" ] && {
+		
+		if [ "$my_fstype" = 'swap' ]; then
+			
+			n=$(uci show fstab | grep "fstab.@swap" | grep -c "=swap")
+			
+			[ $n -gt 0 ] && {
+				for i in $(seq 0 $n)
+				do
+					old_swap="$(uci get fstab.@swap[$i].device)"
+					[ "$old_swap" = "/dev/$device" ] && {
+						FLAG="SKIP"
+						break
+					}
+				done
+			}
+
+			[ "$FLAG" != "SKIP" ] && {
+				uci add fstab swap
+				uci set fstab.@swap[$n]="swap"
+				uci set fstab.@swap[$n].enabled='1'
+				uci set fstab.@swap[$n].device="/dev/$device"
+			}
+
+		else
+			
+			#n=$(uci show fstab | grep "fstab.@mount" | grep -c "=mount")
+			case $device in
+				"sda1") n="0";;
+				"sda2") n="1";;
+				"sda3") n="2";;
+				"sda4") n="3";;
+				"sdb1") n="4";;
+				"sdb2") n="5";;
+				"sdb3") n="6";;
+				"sdb4") n="7";;
+			esac
+
+			#uci add fstab mount
+			uci set fstab.@mount[$n]="mount"
+			uci set fstab.@mount[$n].enabled=1
+			uci set fstab.@mount[$n].device="/dev/$device"
+			uci set fstab.@mount[$n].uuid="${get_uuid}"
+			uci set fstab.@mount[$n].target="/tmp/$device_dir"
+			uci set fstab.@mount[$n].fstype="$my_fstype"
+			uci set fstab.@mount[$n].label="$get_label"
+
+			case "$my_fstype" in
+				ext*)
+					uci set fstab.@mount[$n].options="rw";;
+				'ntfs')
+					modprobe ntfs
+					uci set fstab.@mount[$n].options="rw";;
+				'exfat')
+					uci set fstab.@mount[$n].options="noatime";;
+				'vfat')
+					modprobe vfat
+					modprobe msdos
+					modprobe nls_iso8859_1
+					modprobe nls_cp437
+					uci set fstab.@mount[$n].options="utf8=1,umask=0000,dmask=0000,fmask=0000";;
+			esac
+		fi
+		uci commit fstab
+	}
+}
+
+remove_fstab(){
+    uci set fstab.@mount[$1].enabled="0"
+    uci delete fstab.@mount[$1].device
+    uci delete fstab.@mount[$1].uuid
+    uci delete fstab.@mount[$1].target
+    uci delete fstab.@mount[$1].fstype
+    uci delete fstab.@mount[$1].label
+    uci delete fstab.@mount[$1].options
+}
+
+blkdev=`dirname $DEVPATH`
+if [ `basename $blkdev` != "block" ]; then
+
+    device=`basename $DEVPATH`
+    usb_port=`udevadm info --query=all --name=/dev/$device | grep "DEVPATH" | awk -F "/" '{print $4}'`
+    if [ $usb_port == "60f8800.usb2" ]; then
+        disk_prefix="DISK1"
+    elif [ $usb_port == "8af8800.usb3" ]; then
+        disk_prefix="DISK2"
+    fi
+
+    case $device in
+        sda1|sdb1) device_dir=$disk_prefix"a";;
+        sda2|sdb2) device_dir=$disk_prefix"b";;
+        sda3|sdb3) device_dir=$disk_prefix"c";;
+        sda4|sdb4) device_dir=$disk_prefix"d";;
+        *)  
+            echo "Not support more than 4 paritions...."
+            exit;;
+    esac
+
+    mountpoint=`sed -ne "s|^[^ ]*/$device ||; T; s/ .*//p" /proc/self/mounts`
+    # modified to fit for blkid of barrier breaker
+    # for FAT16, the format should be SEC_TYPE="msdos" UUID="72CA-3AB3" TYPE="vfat". Add space before "TYPE" to get correct data
+    #my_fstype="`blkid /dev/$device | awk -F ' TYPE="' '{print $2}' | sed 's/\" //' | awk -F 'PARTUUID=' '{print $1}' | sed 's/"//g'`"
+	
+	#Richard modify 6TB HDD auto mount issue
+	my_fstype="`blkid /dev/$device | awk -F ' TYPE="' '{print $2}' | sed 's/\" //' | awk -F 'PARTUUID=' '{print $1}' | sed 's/"//' | awk -F 'PARTLABEL=' '{print $1}'`"
+	
+    case "$ACTION" in
+	add)
+		get_uuid=`blkid /dev/$device | awk -F "UUID=" '{print $2}'| awk -F "\"" '{print $2}'`
+                device_bus=`udevadm info --query=all --name=/dev/$device | grep "DEVPATH" | awk -F "/" '{print $8}'`
+                manufacturer=`cat /sys/bus/usb/devices/$device_bus/manufacturer`
+                product=`cat /sys/bus/usb/devices/$device_bus/product`
+                get_label="$manufacturer-$product"
+
+		[ -n "$get_uuid" ] && {
+                    set_fstab
+                #   have_uuid=$(uci show fstab | grep -c "$get_uuid")
+		#   [ "$have_uuid" = "0" ] && set_fstab
+		#   [ "$have_uuid" != "0" ] && set_devices
+		}
+		local from_fstab
+		local anon_mount
+		local anon_swap
+		local anon_fsck
+		local mds_mount_target
+		local mds_mount_device
+		local mds_mount_fstype
+		local sds_swap_device
+		local use_device
+		
+		local autoswap_from_fstab
+		local automount_from_fstab
+
+	    mount_dev_section_cb() {
+    		mds_mount_target="/tmp/$device_dir"
+			mds_mount_device="$3"
+			mds_mount_fstype="$my_fstype"
+			mds_mount_options="$5"
+			mds_mount_enabled="$6"
+	    }
+
+	    swap_dev_section_cb() { 
+			sds_swap_device="$2"
+			return 0
+	    }
+
+		config_get_automount
+		automount_from_fstab="$from_fstab"
+		[ "$automount_from_fstab" -eq 1 ] && {
+			config_get_mount_section_by_device "/dev/$device"
+			use_device="$mds_mount_device"
+			[ "$mds_mount_enabled" -eq 1 ] && {
+				if [ -n "$mds_mount_target" ]; then
+					grep -q "/dev/$device" /proc/mounts || {
+						mkdir -p "$mds_mount_target"
+						logger -t 'fstab' "Chang permission of mount point ${mds_mount_target}"
+						chmod 777 "$mds_mount_target"
+						case "$mds_mount_fstype" in
+						   'ntfs')
+                                                                [ -z "`lsmod | grep fuse`" ] && insmod fuse
+								env -i /usr/bin/ntfs-3g /dev/$device "$mds_mount_target";;
+							*)
+								env -i /bin/mount -t "$mds_mount_fstype" -o "$mds_mount_options" /dev/$device "$mds_mount_target" 2>&1 | tee /proc/self/fd/2 | logger -t 'fstab';;
+						esac										
+					}
+
+				else
+					logger -t 'fstab' "Mount enabled for $mds_mount_device but it doesn't have a defined mountpoint (target)"
+				fi
+			}
+			#pgrep aria2c >/dev/null 2>&1 || /etc/init.d/aria2 start
+			#pgrep smbd >/dev/null 2>&1 || /etc/init.d/samba start
+			# hack for 2.5 inch hard drive delay
+			#[ -n "`which hdparm`" -a -n "hdparm -I /dev/$device | grep 5400" ] && hdparm -B 254 /dev/$device
+		}
+
+		mount_list="1a 1b 1c 1d 2a 2b 2c 2d"
+		n=0;
+		for dir_id in $mount_list
+		do
+		    mount_dir="/tmp/DISK$dir_id"
+		    is_mounted=`grep "$mount_dir" /proc/mounts`
+		    if [ -z $is_mounted ]; then
+                        uci set samba.@sambashare[$n].browseable="no"
+		    else
+                        uci set samba.@sambashare[$n].browseable="yes"
+                    fi
+                    n=`expr $n + 1`
+		done
+                uci commit samba
+
+                check_samba_enable=`uci get samba.@sambashare[0].enable`
+		if [ $check_samba_enable = "yes" ]; then
+                    if [ -z "`pgrep smbd`" ]; then
+                        /etc/init.d/samba start
+                    else
+                        /etc/init.d/samba restart
+                    fi
+                else
+                    /etc/init.d/samba stop
+                fi
+
+                check_dlna_enable=`uci get minidlna.config.enabled`
+	        if [ $check_dlna_enable = "1" ]; then
+		    rm -f /var/run/minidlna/files.db
+
+		    if [ -z "pgrep minidlna" ]; then
+			/etc/init.d/minidlna start
+		    else
+			/etc/init.d/minidlna restart
+		    fi
+	        else
+		    /etc/init.d/minidlna stop
+	        fi
+        	
+		check_dlagent_enable=`uci get transmission.@transmission[0].enabled`
+                check_dlagent_disk=`uci get transmission.@transmission[0].config_dir | grep $mountpoint`
+                if [ $check_dlagent_enable = "1" ] && [ -n $check_dlagent_disk ]; then
+		    if [ -z "pgrep transmission" ]; then
+                        /etc/init.d/transmission start
+                    else
+                        /etc/init.d/transmission restart
+                    fi
+		fi
+		;;
+    remove)
+        if [ -n "$mountpoint" ]; then
+            /etc/init.d/samba stop
+            /etc/init.d/minidlna stop
+            /etc/init.d/transmission stop
+
+            umount $mountpoint
+            rm -rf $mountpoint
+
+            mount_list="1a 1b 1c 1d 2a 2b 2c 2d"
+            n=0;
+            for dir_id in $mount_list
+            do
+                mount_dir="/tmp/DISK$dir_id"
+                if [ $mountpoint = $mount_dir ]; then
+                    uci set samba.@sambashare[$n].browseable="no"
+                fi
+                n=`expr $n + 1`
+            done
+
+            uci commit samba
+            if [ -z "`pgrep smbd`" ]; then
+                /etc/init.d/samba start
+            else
+                /etc/init.d/samba restart
+            fi
+
+            check_dlna_enable=`uci get minidlna.config.enabled`
+            if [ $check_dlna_enable = "1" ]; then
+                rm -f /var/run/minidlna/files.db
+                if [ -z "pgrep minidlna" ]; then
+                    /etc/init.d/minidlna start
+                else
+                    /etc/init.d/minidlna restart
+                fi
+            fi
+
+            check_dlagent_enable=`uci get transmission.@transmission[0].enabled`
+            check_dlagent_disk=`uci get transmission.@transmission[0].config_dir | grep $mountpoint`
+            if [ $check_dlagent_enable = "1" ] && [ -z $check_dlagent_disk ]; then
+                if [ -z "pgrep transmission" ]; then
+                    /etc/init.d/transmission start
+                else
+                    /etc/init.d/transmission restart
+                fi
+            fi
+
+            #KKHuang: Clean all related information in fstab once unmount
+            prefix=${mountpoint:0:10}
+            if [ "$prefix" == "/tmp/DISK1" ]; then
+                for index in 0 1 2 3
+                do
+                    remove_fstab $index
+                done
+                uci commit fstab
+            elif [ "$prefix" == "/tmp/DISK2" ]; then
+                for index in 4 5 6 7
+                do
+                    remove_fstab $index
+                done
+                uci commit fstab
+            fi
+        fi
+        ;;
+    esac	
+
+fi
